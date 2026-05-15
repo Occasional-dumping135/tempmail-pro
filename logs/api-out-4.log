@@ -1,0 +1,7 @@
+2026-05-15 16:43:33 +00:00: Temp Amit Brands API running on port 3001
+2026-05-15 16:43:39 +00:00: 127.0.0.1 - - [15/May/2026:16:43:39 +0000] "GET /api/health HTTP/1.1" 200 87 "-" "curl/7.81.0"
+2026-05-15 16:43:50 +00:00: Temp Amit Brands API running on port 3001
+2026-05-15 16:46:28 +00:00: Temp Amit Brands API running on port 3001
+2026-05-15 16:46:28 +00:00: Redis connecting...
+2026-05-15 16:46:28 +00:00: Redis ready
+2026-05-15 16:46:36 +00:00: 127.0.0.1 - - [15/May/2026:16:46:36 +0000] "GET /api/health HTTP/1.1" 200 107 "-" "curl/7.81.0"

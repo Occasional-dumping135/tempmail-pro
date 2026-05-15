@@ -1,0 +1,1306 @@
+import { useState, useEffect, useCallback, createContext, useContext } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom'
+import { Mail, Plus, Trash2, Copy, Download, RefreshCw, Eye, Menu, X, Check, Clock, LogOut, Shield, Inbox, Send, Key, Settings, User, ChevronRight, Sparkles, Globe, Zap, Bell, Search, MailOpen, FileCode, KeyRound, AlertCircle } from 'lucide-react'
+import './App.css'
+
+const API_URL = window.location.origin + '/api'
+
+// Auth Context
+const AuthContext = createContext(null)
+
+function useAuth() {
+  return useContext(AuthContext)
+}
+
+function AuthProvider({ children }) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [sessionToken, setSessionToken] = useState('')
+  const [userToken, setUserToken] = useState('')
+  const [usage, setUsage] = useState({ today: 0, limit: 200000, remaining: 200000 })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('mailtemp_session')
+    if (saved) {
+      try {
+        const { token, session } = JSON.parse(saved)
+        setSessionToken(session)
+        setUserToken(token)
+        setIsLoggedIn(true)
+      } catch (e) {
+        localStorage.removeItem('mailtemp_session')
+      }
+    }
+    setLoading(false)
+  }, [])
+
+  const api = useCallback(async (endpoint, options = {}) => {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(sessionToken && { 'Authorization': `Bearer ${sessionToken}` })
+    }
+    const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Request failed')
+    return data
+  }, [sessionToken])
+
+  const login = async (token) => {
+    const data = await api('/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ token })
+    })
+    setSessionToken(data.session_token)
+    setUserToken(token)
+    setIsLoggedIn(true)
+    setUsage({ today: data.current_usage || 0, limit: data.daily_limit || 200000, remaining: (data.daily_limit || 200000) - (data.current_usage || 0) })
+    localStorage.setItem('mailtemp_session', JSON.stringify({ token, session: data.session_token }))
+    return data
+  }
+
+  const logout = () => {
+    setIsLoggedIn(false)
+    setSessionToken('')
+    setUserToken('')
+    localStorage.removeItem('mailtemp_session')
+  }
+
+  const fetchUsage = async () => {
+    try {
+      const data = await api('/v1/token/usage')
+      setUsage(data.usage)
+    } catch (err) {
+      console.error('Usage fetch error:', err)
+    }
+  }
+
+  if (loading) return <div className="loading-screen"><div className="loader"></div></div>
+
+  return (
+    <AuthContext.Provider value={{ isLoggedIn, sessionToken, userToken, usage, api, login, logout, fetchUsage, setUsage }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+// Protected Route
+function ProtectedRoute({ children }) {
+  const { isLoggedIn } = useAuth()
+  if (!isLoggedIn) return <Navigate to="/login" replace />
+  return children
+}
+
+// Landing Page
+function LandingPage() {
+  const { isLoggedIn } = useAuth()
+  if (isLoggedIn) return <Navigate to="/inbox" replace />
+
+  return (
+    <div className="landing">
+      <nav className="landing-nav" data-testid="landing-nav">
+        <div className="nav-brand">
+          <Mail className="brand-icon" />
+          <span>Temp Amit Brands</span>
+        </div>
+        <div className="nav-actions">
+          <Link to="/login" className="btn btn-ghost" data-testid="nav-login-btn">Login</Link>
+          <Link to="/signup" className="btn btn-primary" data-testid="nav-signup-btn">Get Started</Link>
+        </div>
+      </nav>
+
+      <main className="hero">
+        <div className="hero-badge">
+          <Sparkles size={16} /> Privacy-First Email Service
+        </div>
+        <h1><span class="hero-title-top">Temporary Email</span><br /><span className="gradient-text">Without the Hassle</span></h1>
+        <p className="hero-subtitle">No registration. No passwords. Just instant, disposable email addresses powered by token-based authentication.</p>
+        
+        <div className="hero-actions">
+          <Link to="/signup" className="btn btn-primary btn-lg" data-testid="hero-get-started-btn">
+            <Key size={20} /> Get Your Token
+          </Link>
+          <Link to="/login" className="btn btn-secondary btn-lg" data-testid="hero-login-btn">
+            Already have a token?
+          </Link>
+        </div>
+
+        <div className="features-grid">
+          <div className="feature-card" data-testid="feature-privacy">
+            <div className="feature-icon"><Shield size={24} /></div>
+            <h3>Complete Privacy</h3>
+            <p>No personal info required. Your 40-character token is your only identity.</p>
+          </div>
+          <div className="feature-card" data-testid="feature-instant">
+            <div className="feature-icon"><Zap size={24} /></div>
+            <h3>Instant Setup</h3>
+            <p>Generate a token and start receiving emails in under 30 seconds.</p>
+          </div>
+          <div className="feature-card" data-testid="feature-domains">
+            <div className="feature-icon"><Globe size={24} /></div>
+            <h3>Multiple Domains</h3>
+            <p>Choose from temp, soul, or crack subdomains for your addresses.</p>
+          </div>
+          <div className="feature-card" data-testid="feature-realtime">
+            <div className="feature-icon"><Bell size={24} /></div>
+            <h3>Real-time Updates</h3>
+            <p>Receive emails instantly with live inbox updates.</p>
+          </div>
+        </div>
+
+        <div className="stats-section">
+          <div className="stat-item">
+            <span className="stat-value">400K+</span>
+            <span className="stat-label">Users Trust Us</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="stat-value">200K</span>
+            <span className="stat-label">Daily API Calls</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="stat-value">99.9%</span>
+            <span className="stat-label">Uptime</span>
+          </div>
+        </div>
+      </main>
+
+      <footer className="landing-footer">
+        <p>&copy; 2024 Temp Amit Brands. Privacy-first temporary email service.</p>
+      </footer>
+    </div>
+  )
+}
+
+// Login Page
+function LoginPage() {
+  const [token, setToken] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const { login, isLoggedIn } = useAuth()
+  const navigate = useNavigate()
+
+  if (isLoggedIn) return <Navigate to="/inbox" replace />
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    if (token.length !== 40) {
+      setError('Token must be exactly 40 characters')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      await login(token)
+      navigate('/inbox')
+    } catch (err) {
+      setError(err.message)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="auth-page">
+      <Link to="/" className="back-link" data-testid="back-to-home"><ChevronRight className="rotate-180" size={16} /> Back to home</Link>
+      
+      <div className="auth-card" data-testid="login-card">
+        <div className="auth-icon"><Key size={32} /></div>
+        <h1>Welcome Back</h1>
+        <p className="auth-subtitle">Enter your 40-character token to access your account</p>
+        
+        <form onSubmit={handleLogin}>
+          {error && <div className="alert alert-error" data-testid="login-error">{error}</div>}
+          
+          <div className="form-group">
+            <label>Your Token</label>
+            <input
+              type="text"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Enter your 40-character token"
+              maxLength={40}
+              className="input input-lg"
+              data-testid="login-token-input"
+              autoFocus
+            />
+            <span className="input-hint">{token.length}/40 characters</span>
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading || token.length !== 40} data-testid="login-submit-btn">
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          <p>Don't have a token? <Link to="/signup" data-testid="go-to-signup">Generate one for free</Link></p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Signup Page
+function SignupPage() {
+  const [newToken, setNewToken] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const { isLoggedIn } = useAuth()
+  const navigate = useNavigate()
+
+  if (isLoggedIn) return <Navigate to="/inbox" replace />
+
+  const generateToken = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/v1/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setNewToken(data.token)
+    } catch (err) {
+      setError(err.message)
+    }
+    setLoading(false)
+  }
+
+  const copyToken = () => {
+    navigator.clipboard.writeText(newToken)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const downloadToken = () => {
+    const content = `Temp Amit Brands - Your Token
+=============================
+Token: ${newToken}
+
+IMPORTANT: Save this token! It's your only way to access your account.
+
+How to use:
+1. Go to temp.amitbrand.shop/login
+2. Enter this 40-character token
+3. Create temporary email addresses
+4. Receive emails instantly
+
+Domains available:
+- temp.amitbrand.shop
+- soul.amitbrand.shop
+- crack.amitbrand.shop
+
+Daily Limit: 200,000 API calls
+
+Generated: ${new Date().toISOString()}`
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'temp-amit-brands-token.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="auth-page">
+      <Link to="/" className="back-link" data-testid="back-to-home"><ChevronRight className="rotate-180" size={16} /> Back to home</Link>
+      
+      <div className="auth-card auth-card-wide" data-testid="signup-card">
+        <div className="auth-icon"><Sparkles size={32} /></div>
+        
+        {!newToken ? (
+          <>
+            <h1>Create Your Token</h1>
+            <p className="auth-subtitle">Generate a unique 40-character token that will be your key to access this service. No email or password needed.</p>
+            
+            {error && <div className="alert alert-error" data-testid="signup-error">{error}</div>}
+
+            <div className="info-box">
+              <h4>What you'll get:</h4>
+              <ul>
+                <li>A unique 40-character access token</li>
+                <li>200,000 API calls per day</li>
+                <li>Multiple email addresses across 3 domains</li>
+                <li>24-hour email retention</li>
+              </ul>
+            </div>
+
+            <button onClick={generateToken} className="btn btn-primary btn-full btn-lg" disabled={loading} data-testid="generate-token-btn">
+              {loading ? 'Generating...' : 'Generate My Token'}
+            </button>
+          </>
+        ) : (
+          <>
+            <h1>Your Token is Ready!</h1>
+            <p className="auth-subtitle">Save this token securely. It's your only way to access your account.</p>
+
+            <div className="token-box" data-testid="generated-token">
+              <code>{newToken}</code>
+              <button onClick={copyToken} className="btn btn-icon" data-testid="copy-token-btn">
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+              </button>
+            </div>
+
+            <div className="warning-box">
+              <strong>Important:</strong> This token cannot be recovered if lost. Download or copy it now!
+            </div>
+
+            <div className="token-actions">
+              <button onClick={downloadToken} className="btn btn-secondary" data-testid="download-token-btn">
+                <Download size={18} /> Download Token
+              </button>
+              <button onClick={() => navigate('/login?token=' + newToken)} className="btn btn-primary" data-testid="go-to-login-btn">
+                Continue to Login
+              </button>
+            </div>
+          </>
+        )}
+
+        <div className="auth-footer">
+          <p>Already have a token? <Link to="/login" data-testid="go-to-login-link">Login here</Link></p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Dashboard Layout
+function DashboardLayout({ children }) {
+  const { logout, usage, userToken } = useAuth()
+  const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const navItems = [
+    { path: '/inbox', label: 'Inbox', icon: Inbox },
+    { path: '/emails', label: 'My Emails', icon: Mail },
+    { path: '/send', label: 'Send Mail', icon: Send },
+    { path: '/keys', label: 'API Keys', icon: KeyRound },
+    { path: '/docs', label: 'API Docs', icon: FileCode },
+    { path: '/token', label: 'Token Info', icon: Key },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ]
+
+  return (
+    <div className="dashboard">
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} data-testid="dashboard-sidebar">
+        <div className="sidebar-header">
+          <div className="brand">
+            <Mail size={24} />
+            <span>Temp Mail</span>
+          </div>
+          <button className="btn btn-icon mobile-close" onClick={() => setSidebarOpen(false)}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="sidebar-nav">
+          {navItems.map(item => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+              data-testid={`nav-${item.path.slice(1)}`}
+            >
+              <item.icon size={20} />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="usage-widget" data-testid="usage-widget">
+            <div className="usage-header">
+              <span>Daily Usage</span>
+              <span>{((usage.today / usage.limit) * 100).toFixed(1)}%</span>
+            </div>
+            <div className="usage-bar">
+              <div className="usage-fill" style={{ width: `${Math.min((usage.today / usage.limit) * 100, 100)}%` }}></div>
+            </div>
+            <div className="usage-details">
+              {usage.today.toLocaleString()} / {usage.limit.toLocaleString()} calls
+            </div>
+          </div>
+          
+          <button onClick={logout} className="btn btn-ghost btn-full" data-testid="logout-btn">
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      <div className="main-wrapper">
+        <header className="topbar" data-testid="dashboard-topbar">
+          <button className="btn btn-icon mobile-menu" onClick={() => setSidebarOpen(true)} data-testid="mobile-menu-btn">
+            <Menu size={24} />
+          </button>
+          <div className="topbar-title">{navItems.find(n => n.path === location.pathname)?.label || 'Dashboard'}</div>
+          <div className="topbar-token" data-testid="topbar-token">
+            <span>Token:</span>
+            <code>{userToken?.slice(0, 8)}...{userToken?.slice(-4)}</code>
+          </div>
+        </header>
+        
+        <main className="main-content" data-testid="main-content">
+          {children}
+        </main>
+      </div>
+
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>}
+    </div>
+  )
+}
+
+// Inbox Page
+function InboxPage() {
+  const { api, fetchUsage } = useAuth()
+  const [emails, setEmails] = useState([])
+  const [selectedEmail, setSelectedEmail] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [selectedMessage, setSelectedMessage] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const fetchEmails = async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true)
+    try {
+      const data = await api('/v1/email/list')
+      setEmails(data.emails || [])
+    } catch (err) {
+      console.error('Fetch emails error:', err)
+    }
+    setLoading(false)
+    setRefreshing(false)
+  }
+
+  const fetchMessages = async (emailId) => {
+    try {
+      const data = await api(`/v1/email/${emailId}/messages`)
+      setMessages(data.messages || [])
+      await fetchUsage()
+    } catch (err) {
+      console.error('Fetch messages error:', err)
+    }
+  }
+
+  const viewMessage = async (msg) => {
+    try {
+      const data = await api(`/v1/email/${selectedEmail.id}/messages/${msg.id}`)
+      setSelectedMessage(data.message)
+      await fetchUsage()
+      // Update local state to mark as read
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m))
+    } catch (err) {
+      console.error('View message error:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchEmails()
+    const interval = setInterval(() => fetchEmails(), 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (selectedEmail) {
+      fetchMessages(selectedEmail.id)
+      const interval = setInterval(() => fetchMessages(selectedEmail.id), 15000)
+      return () => clearInterval(interval)
+    }
+  }, [selectedEmail?.id])
+
+  const totalUnread = emails.reduce((acc, e) => acc + (e.unread_count || 0), 0)
+
+  if (loading) return <div className="page-loading"><div className="loader"></div></div>
+
+  return (
+    <div className="inbox-page" data-testid="inbox-page">
+      <div className="inbox-header">
+        <h2><Inbox size={24} /> Inbox {totalUnread > 0 && <span className="badge">{totalUnread}</span>}</h2>
+        <button onClick={() => fetchEmails(true)} className="btn btn-secondary" disabled={refreshing} data-testid="refresh-inbox-btn">
+          <RefreshCw size={16} className={refreshing ? 'spinning' : ''} /> Refresh
+        </button>
+      </div>
+
+      {emails.length === 0 ? (
+        <div className="empty-state" data-testid="no-emails-state">
+          <MailOpen size={64} />
+          <h3>No Email Addresses</h3>
+          <p>Create your first temporary email address to start receiving messages.</p>
+          <Link to="/emails" className="btn btn-primary" data-testid="create-first-email-btn">
+            <Plus size={18} /> Create Email
+          </Link>
+        </div>
+      ) : (
+        <div className="inbox-layout">
+          <div className="email-selector" data-testid="email-selector">
+            <h4>Select Email</h4>
+            {emails.map(email => (
+              <button
+                key={email.id}
+                className={`email-option ${selectedEmail?.id === email.id ? 'active' : ''}`}
+                onClick={() => { setSelectedEmail(email); setSelectedMessage(null); }}
+                data-testid={`email-option-${email.id}`}
+              >
+                <Mail size={16} />
+                <span className="email-address">{email.address}</span>
+                {email.unread_count > 0 && <span className="unread-badge">{email.unread_count}</span>}
+              </button>
+            ))}
+          </div>
+
+          <div className="messages-panel" data-testid="messages-panel">
+            {!selectedEmail ? (
+              <div className="select-email-prompt">
+                <Mail size={48} />
+                <p>Select an email address to view messages</p>
+              </div>
+            ) : selectedMessage ? (
+              <div className="message-view" data-testid="message-view">
+                <button onClick={() => setSelectedMessage(null)} className="btn btn-ghost" data-testid="back-to-messages-btn">
+                  <ChevronRight className="rotate-180" size={16} /> Back to messages
+                </button>
+                <div className="message-header">
+                  <h3>{selectedMessage.subject || '(No Subject)'}</h3>
+                  <div className="message-meta">
+                    <span><strong>From:</strong> {selectedMessage.sender}</span>
+                    <span><strong>Received:</strong> {new Date(selectedMessage.received_at).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="message-body">
+                  {selectedMessage.body_html ? (
+                    <iframe
+                      srcDoc={selectedMessage.body_html}
+                      sandbox="allow-same-origin"
+                      title="Email content"
+                    />
+                  ) : (
+                    <pre>{selectedMessage.body_text || '(No content)'}</pre>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="messages-header">
+                  <h4>Messages for {selectedEmail.address}</h4>
+                  <span className="message-count">{messages.length} messages</span>
+                </div>
+                {messages.length === 0 ? (
+                  <div className="no-messages" data-testid="no-messages">
+                    <MailOpen size={48} />
+                    <p>No messages yet. Send an email to {selectedEmail.address} to test it!</p>
+                  </div>
+                ) : (
+                  <div className="messages-list" data-testid="messages-list">
+                    {messages.map(msg => (
+                      <div
+                        key={msg.id}
+                        className={`message-item ${!msg.is_read ? 'unread' : ''}`}
+                        onClick={() => viewMessage(msg)}
+                        data-testid={`message-${msg.id}`}
+                      >
+                        <div className="message-sender">{msg.sender}</div>
+                        <div className="message-subject">{msg.subject || '(No Subject)'}</div>
+                        <div className="message-preview">{msg.body_text?.substring(0, 100) || '...'}</div>
+                        <div className="message-time">{new Date(msg.received_at).toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// My Emails Page
+function EmailsPage() {
+  const { api, fetchUsage } = useAuth()
+  const [emails, setEmails] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createType, setCreateType] = useState('random')
+  const [customName, setCustomName] = useState('')
+  const [subdomain, setSubdomain] = useState('temp')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(null)
+
+  const fetchEmails = async () => {
+    try {
+      const data = await api('/v1/email/list')
+      setEmails(data.emails || [])
+    } catch (err) {
+      console.error('Fetch emails error:', err)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchEmails()
+  }, [])
+
+  const createEmail = async () => {
+    setCreating(true)
+    setError('')
+    try {
+      const body = { type: createType, subdomain }
+      if (createType === 'custom') body.name = customName
+      await api('/v1/email/create', { method: 'POST', body: JSON.stringify(body) })
+      setShowCreate(false)
+      setCustomName('')
+      fetchEmails()
+      await fetchUsage()
+    } catch (err) {
+      setError(err.message)
+    }
+    setCreating(false)
+  }
+
+  const deleteEmail = async (id) => {
+    if (!confirm('Are you sure you want to delete this email address? All messages will be lost.')) return
+    try {
+      await api(`/v1/email/${id}`, { method: 'DELETE' })
+      fetchEmails()
+      await fetchUsage()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const copyAddress = (address, id) => {
+    navigator.clipboard.writeText(address)
+    setCopied(id)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  if (loading) return <div className="page-loading"><div className="loader"></div></div>
+
+  return (
+    <div className="emails-page" data-testid="emails-page">
+      <div className="page-header">
+        <h2><Mail size={24} /> My Email Addresses</h2>
+        <button onClick={() => setShowCreate(true)} className="btn btn-primary" data-testid="create-email-btn">
+          <Plus size={18} /> Create Email
+        </button>
+      </div>
+
+      {emails.length === 0 ? (
+        <div className="empty-state" data-testid="no-emails-empty">
+          <Mail size={64} />
+          <h3>No Email Addresses Yet</h3>
+          <p>Create your first temporary email address to start receiving messages.</p>
+          <button onClick={() => setShowCreate(true)} className="btn btn-primary btn-lg">
+            <Plus size={18} /> Create Your First Email
+          </button>
+        </div>
+      ) : (
+        <div className="emails-grid" data-testid="emails-grid">
+          {emails.map(email => (
+            <div key={email.id} className="email-card" data-testid={`email-card-${email.id}`}>
+              <div className="email-card-header">
+                <span className={`subdomain-badge ${email.subdomain}`}>{email.subdomain}</span>
+                {email.unread_count > 0 && <span className="unread-badge">{email.unread_count} new</span>}
+              </div>
+              <div className="email-card-address" title={email.address}>{email.address}</div>
+              <div className="email-card-stats">
+                <span>{email.message_count || 0} messages</span>
+                <span>Expires: {new Date(email.expires_at).toLocaleDateString()}</span>
+              </div>
+              <div className="email-card-actions">
+                <button onClick={() => copyAddress(email.address, email.id)} className="btn btn-secondary btn-sm" data-testid={`copy-email-${email.id}`}>
+                  {copied === email.id ? <Check size={14} /> : <Copy size={14} />}
+                  {copied === email.id ? 'Copied!' : 'Copy'}
+                </button>
+                <button onClick={() => deleteEmail(email.id)} className="btn btn-danger btn-sm" data-testid={`delete-email-${email.id}`}>
+                  <Trash2 size={14} /> Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} data-testid="create-email-modal">
+            <h3>Create New Email Address</h3>
+            
+            {error && <div className="alert alert-error">{error}</div>}
+
+            <div className="form-group">
+              <label>Email Type</label>
+              <div className="toggle-group">
+                <button className={`toggle-btn ${createType === 'random' ? 'active' : ''}`} onClick={() => setCreateType('random')} data-testid="type-random-btn">
+                  Random
+                </button>
+                <button className={`toggle-btn ${createType === 'custom' ? 'active' : ''}`} onClick={() => setCreateType('custom')} data-testid="type-custom-btn">
+                  Custom
+                </button>
+              </div>
+            </div>
+
+            {createType === 'custom' && (
+              <div className="form-group">
+                <label>Email Name</label>
+                <input
+                  type="text"
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                  placeholder="yourname"
+                  className="input"
+                  data-testid="custom-name-input"
+                />
+              </div>
+            )}
+
+            <div className="form-group">
+              <label>Domain</label>
+              <select value={subdomain} onChange={e => setSubdomain(e.target.value)} className="input select" data-testid="subdomain-select">
+                <option value="temp">temp.amitbrand.shop</option>
+                <option value="soul">soul.amitbrand.shop</option>
+                <option value="crack">crack.amitbrand.shop</option>
+              </select>
+            </div>
+
+            <div className="preview-box">
+              <span>Preview:</span>
+              <code>{createType === 'custom' ? (customName || 'yourname') : '[random]'}@{subdomain}.amitbrand.shop</code>
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={() => setShowCreate(false)} className="btn btn-ghost" data-testid="cancel-create-btn">Cancel</button>
+              <button 
+                onClick={createEmail} 
+                className="btn btn-primary" 
+                disabled={creating || (createType === 'custom' && !customName)}
+                data-testid="confirm-create-btn"
+              >
+                {creating ? 'Creating...' : 'Create Email (5 tokens)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Token Info Page
+function TokenPage() {
+  const { userToken, usage, fetchUsage } = useAuth()
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    fetchUsage()
+  }, [])
+
+  const copyToken = () => {
+    navigator.clipboard.writeText(userToken)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const downloadToken = () => {
+    const content = `Temp Amit Brands - Your Token
+=============================
+Token: ${userToken}
+
+IMPORTANT: Keep this token safe!
+
+Generated: ${new Date().toISOString()}`
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'temp-amit-brands-token.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="token-page" data-testid="token-page">
+      <div className="page-header">
+        <h2><Key size={24} /> Token Information</h2>
+      </div>
+
+      <div className="token-section" data-testid="token-display-section">
+        <h3>Your Access Token</h3>
+        <p className="text-muted">This is your unique 40-character token. Keep it safe!</p>
+        
+        <div className="token-display">
+          <code data-testid="full-token">{userToken}</code>
+          <div className="token-actions">
+            <button onClick={copyToken} className="btn btn-secondary" data-testid="copy-full-token-btn">
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <button onClick={downloadToken} className="btn btn-secondary" data-testid="download-token-btn">
+              <Download size={16} /> Download
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="usage-section" data-testid="usage-section">
+        <h3>API Usage Statistics</h3>
+        
+        <div className="usage-card">
+          <div className="usage-main">
+            <div className="usage-circle">
+              <svg viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border)" strokeWidth="8" />
+                <circle 
+                  cx="50" cy="50" r="45" 
+                  fill="none" 
+                  stroke="var(--accent)" 
+                  strokeWidth="8" 
+                  strokeDasharray={2 * Math.PI * 45}
+                  strokeDashoffset={2 * Math.PI * 45 * (1 - usage.today / usage.limit)}
+                  strokeLinecap="round"
+                  transform="rotate(-90 50 50)"
+                />
+              </svg>
+              <div className="usage-percent">{((usage.today / usage.limit) * 100).toFixed(1)}%</div>
+            </div>
+            <div className="usage-info">
+              <div className="usage-stat">
+                <span className="label">Used Today</span>
+                <span className="value">{usage.today.toLocaleString()}</span>
+              </div>
+              <div className="usage-stat">
+                <span className="label">Daily Limit</span>
+                <span className="value">{usage.limit.toLocaleString()}</span>
+              </div>
+              <div className="usage-stat">
+                <span className="label">Remaining</span>
+                <span className="value">{(usage.limit - usage.today).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="cost-table" data-testid="cost-table">
+          <h4>API Token Costs</h4>
+          <table>
+            <thead>
+              <tr><th>Action</th><th>Tokens</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Create Email</td><td>5</td></tr>
+              <tr><td>Delete Email</td><td>2</td></tr>
+              <tr><td>Get Messages</td><td>3</td></tr>
+              <tr><td>Read Message</td><td>1</td></tr>
+              <tr><td>List Emails</td><td className="free">FREE</td></tr>
+              <tr><td>Check Usage</td><td className="free">FREE</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Settings Page
+function SettingsPage() {
+  const { logout, userToken } = useAuth()
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  const clearAllData = () => {
+    localStorage.clear()
+    logout()
+  }
+
+  return (
+    <div className="settings-page" data-testid="settings-page">
+      <div className="page-header">
+        <h2><Settings size={24} /> Settings</h2>
+      </div>
+
+      <div className="settings-section">
+        <h3>Account</h3>
+        <div className="setting-item">
+          <div className="setting-info">
+            <h4>Export Token</h4>
+            <p>Download your token as a text file for backup</p>
+          </div>
+          <button onClick={() => {
+            const content = `Token: ${userToken}`;
+            const blob = new Blob([content], { type: 'text/plain' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'token-backup.txt'
+            a.click()
+          }} className="btn btn-secondary" data-testid="export-token-btn">
+            <Download size={16} /> Export
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-section danger">
+        <h3>Danger Zone</h3>
+        <div className="setting-item">
+          <div className="setting-info">
+            <h4>Clear Local Data</h4>
+            <p>This will log you out and clear all cached data. Your emails will not be affected.</p>
+          </div>
+          <button onClick={() => setShowConfirm(true)} className="btn btn-danger" data-testid="clear-data-btn">
+            Clear Data
+          </button>
+        </div>
+      </div>
+
+      {showConfirm && (
+        <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
+          <div className="modal modal-sm" onClick={e => e.stopPropagation()} data-testid="confirm-clear-modal">
+            <h3>Clear Local Data?</h3>
+            <p>You will be logged out. Make sure you have saved your token!</p>
+            <div className="modal-actions">
+              <button onClick={() => setShowConfirm(false)} className="btn btn-ghost">Cancel</button>
+              <button onClick={clearAllData} className="btn btn-danger" data-testid="confirm-clear-btn">Clear & Logout</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Main App
+
+// ---------------- Send Mail Page ----------------
+function SendMailPage() {
+  const { api, fetchUsage } = useAuth()
+  const [emails, setEmails] = useState([])
+  const [fromId, setFromId] = useState('')
+  const [to, setTo] = useState('')
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await api('/v1/email/list')
+        setEmails(data.emails || [])
+        if (data.emails && data.emails.length && !fromId) setFromId(String(data.emails[0].id))
+      } catch (e) { setError(e.message) }
+    })()
+  }, [api])
+
+  const askConfirm = (e) => {
+    e.preventDefault()
+    setError('')
+    if (!fromId) { setError('Select a sender email'); return }
+    if (!to || !subject || !body) { setError('All fields required'); return }
+    setShowConfirm(true)
+  }
+
+  const doSend = async () => {
+    setSending(true)
+    setError('')
+    try {
+      const data = await api('/v1/mail/send', {
+        method: 'POST',
+        body: JSON.stringify({ emailId: parseInt(fromId), to, subject, body })
+      })
+      setResult(data)
+      setSubject(''); setBody(''); setTo('')
+      fetchUsage()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSending(false)
+      setShowConfirm(false)
+    }
+  }
+
+  const senderAddr = emails.find(e => String(e.id) === String(fromId))?.address || ''
+
+  return (
+    <div className="page-container" data-testid="send-mail-page">
+      <div className="page-header">
+        <h1>Send Mail</h1>
+        <p className="page-subtitle">Send outbound email from your temporary addresses (5 tokens / send)</p>
+      </div>
+
+      {result && (
+        <div className="alert alert-success" data-testid="send-success">
+          <Check size={18} />
+          <div>
+            <strong>Email sent!</strong><br/>
+            From: {result.from} → To: {result.to}<br/>
+            <small>Accepted by: {(result.accepted || []).join(', ') || 'recipient server'}</small>
+          </div>
+          <button onClick={() => setResult(null)} className="btn btn-icon"><X size={16}/></button>
+        </div>
+      )}
+      {error && (
+        <div className="alert alert-error" data-testid="send-error">
+          <AlertCircle size={18}/>{error}
+          <button onClick={() => setError('')} className="btn btn-icon"><X size={16}/></button>
+        </div>
+      )}
+
+      <form className="form-card" onSubmit={askConfirm} data-testid="send-mail-form">
+        <div className="form-group">
+          <label>From (your temp email)</label>
+          <select value={fromId} onChange={e => setFromId(e.target.value)} className="input" data-testid="send-from-select" required>
+            <option value="">-- Select sender --</option>
+            {emails.map(e => <option key={e.id} value={e.id}>{e.address}</option>)}
+          </select>
+          {emails.length === 0 && <small style={{color:'#94a3b8'}}>You have no temp emails. <Link to="/emails">Create one first</Link>.</small>}
+        </div>
+        <div className="form-group">
+          <label>To</label>
+          <input type="email" value={to} onChange={e => setTo(e.target.value)} placeholder="recipient@gmail.com" className="input" data-testid="send-to-input" required/>
+        </div>
+        <div className="form-group">
+          <label>Subject</label>
+          <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject" className="input" data-testid="send-subject-input" required/>
+        </div>
+        <div className="form-group">
+          <label>Body</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Your message..." className="input" rows={8} data-testid="send-body-input" required/>
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={sending || emails.length === 0} data-testid="send-mail-btn">
+          <Send size={18}/> Send Email (5 tokens)
+        </button>
+      </form>
+
+      {showConfirm && (
+        <div className="modal-overlay" data-testid="send-confirm-modal">
+          <div className="modal">
+            <h3>Confirm send?</h3>
+            <p>You are about to send an email:</p>
+            <div className="confirm-details">
+              <div><strong>From:</strong> {senderAddr}</div>
+              <div><strong>To:</strong> {to}</div>
+              <div><strong>Subject:</strong> {subject}</div>
+            </div>
+            <p style={{color:'#fbbf24',fontSize:'0.85rem'}}>This will consume 5 tokens. The email will be DKIM-signed and delivered directly to recipient's MX.</p>
+            <div className="modal-actions">
+              <button onClick={() => setShowConfirm(false)} className="btn btn-ghost" disabled={sending} data-testid="send-cancel-btn">Cancel</button>
+              <button onClick={doSend} className="btn btn-primary" disabled={sending} data-testid="send-confirm-btn">
+                {sending ? <><RefreshCw size={16} className="spin"/> Sending...</> : <>Confirm & Send</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------- API Keys Page ----------------
+function ApiKeysPage() {
+  const { api } = useAuth()
+  const [keys, setKeys] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [newKey, setNewKey] = useState(null)
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const data = await api('/v1/keys')
+      setKeys(data.keys || [])
+    } catch (e) { setError(e.message) }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  const createKey = async (e) => {
+    e.preventDefault()
+    setError('')
+    setCreating(true)
+    try {
+      const data = await api('/v1/keys/create', { method: 'POST', body: JSON.stringify({ name: name || 'Default Key' }) })
+      setNewKey(data.api_key)
+      setName('')
+      load()
+    } catch (e) { setError(e.message) }
+    setCreating(false)
+  }
+
+  const deleteKey = async (id) => {
+    if (!confirm('Revoke this API key permanently?')) return
+    try {
+      await api('/v1/keys/' + id, { method: 'DELETE' })
+      load()
+    } catch (e) { setError(e.message) }
+  }
+
+  const copyKey = () => {
+    navigator.clipboard.writeText(newKey)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="page-container" data-testid="api-keys-page">
+      <div className="page-header">
+        <h1>API Access Keys</h1>
+        <p className="page-subtitle">Use API keys with <code>X-API-Key</code> header for programmatic access. Only 1 active key at a time.</p>
+      </div>
+
+      {error && <div className="alert alert-error" data-testid="keys-error"><AlertCircle size={18}/>{error}</div>}
+
+      {newKey && (
+        <div className="alert alert-success" data-testid="new-key-display" style={{flexDirection:'column',alignItems:'flex-start'}}>
+          <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}><Check size={18}/><strong>Save this key now — it will not be shown again!</strong></div>
+          <code style={{background:'#0f172a',padding:'10px 14px',borderRadius:6,wordBreak:'break-all',width:'100%',color:'#a5b4fc'}}>{newKey}</code>
+          <div style={{marginTop:10,display:'flex',gap:8}}>
+            <button onClick={copyKey} className="btn btn-primary" data-testid="copy-new-key-btn">
+              {copied ? <><Check size={16}/> Copied</> : <><Copy size={16}/> Copy</>}
+            </button>
+            <button onClick={() => setNewKey(null)} className="btn btn-ghost" data-testid="dismiss-new-key-btn">I've saved it</button>
+          </div>
+        </div>
+      )}
+
+      {keys.length === 0 ? (
+        <form onSubmit={createKey} className="form-card" data-testid="create-key-form">
+          <div className="form-group">
+            <label>Key Name (optional)</label>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="My Production Key" className="input" data-testid="key-name-input"/>
+          </div>
+          <button type="submit" disabled={creating} className="btn btn-primary" data-testid="create-key-btn">
+            {creating ? <><RefreshCw size={16} className="spin"/> Creating...</> : <><Plus size={16}/> Create Access Key</>}
+          </button>
+        </form>
+      ) : (
+        <div className="card" data-testid="keys-list">
+          {keys.map(k => (
+            <div key={k.id} className="key-row" data-testid={`key-${k.id}`}>
+              <div>
+                <div><strong>{k.name}</strong></div>
+                <code style={{color:'#94a3b8',fontSize:'0.85rem'}}>{k.key_prefix}...</code>
+                <div style={{fontSize:'0.8rem',color:'#64748b',marginTop:4}}>
+                  Created {new Date(k.created_at).toLocaleString()}
+                  {k.last_used_at && ' · Last used ' + new Date(k.last_used_at).toLocaleString()}
+                </div>
+              </div>
+              <button onClick={() => deleteKey(k.id)} className="btn btn-danger" data-testid={`delete-key-${k.id}`}>
+                <Trash2 size={16}/> Revoke
+              </button>
+            </div>
+          ))}
+          <p style={{marginTop:16,color:'#94a3b8',fontSize:'0.85rem'}}>To create a new key, revoke the existing one first.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------- API Docs Page ----------------
+function ApiDocsPage() {
+  const { api, userToken } = useAuth()
+  const [endpoints, setEndpoints] = useState([])
+  const [keys, setKeys] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [baseUrl, setBaseUrl] = useState('')
+  const [copied, setCopied] = useState('')
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // public endpoint, doesn't need auth
+        const docsRes = await fetch(API_URL + '/v1/docs/endpoints')
+        const docs = await docsRes.json()
+        setEndpoints(docs.endpoints || [])
+        setBaseUrl(docs.base_url || window.location.origin)
+        const keysData = await api('/v1/keys')
+        setKeys(keysData.keys || [])
+      } catch (e) {
+        // ignore
+      }
+      setLoading(false)
+    })()
+  }, [api])
+
+  const sampleKey = keys.length > 0 ? 'YOUR_API_KEY' : 'mtak_xxxxx_create_a_key_in_API_Keys_tab'
+
+  const copyExample = (text, id) => {
+    navigator.clipboard.writeText(text)
+    setCopied(id)
+    setTimeout(() => setCopied(''), 1500)
+  }
+
+  return (
+    <div className="page-container" data-testid="api-docs-page">
+      <div className="page-header">
+        <h1>API Documentation</h1>
+        <p className="page-subtitle">All available endpoints. Authenticate with <code>X-API-Key: &lt;your_key&gt;</code> header.</p>
+      </div>
+
+      <div className="card" style={{marginBottom:20}}>
+        <h3 style={{marginTop:0}}><Globe size={18} style={{verticalAlign:'middle'}}/> Base URL</h3>
+        <code style={{background:'#0f172a',padding:'10px 14px',borderRadius:6,display:'block',color:'#a5b4fc'}}>{baseUrl}</code>
+        <p style={{color:'#94a3b8',fontSize:'0.85rem',marginTop:10}}>
+          Auth header: <code>X-API-Key: {sampleKey}</code>
+          {keys.length === 0 && <span style={{color:'#fbbf24'}}> · No active API key — <Link to="/keys">create one</Link>.</span>}
+        </p>
+      </div>
+
+      {loading ? <div className="loading">Loading endpoints...</div> : (
+        <div className="endpoints-grid" data-testid="endpoints-list">
+          {endpoints.map((ep, i) => {
+            const cmd = `curl -X ${ep.method} '${baseUrl}${ep.path.replace(':id','1').replace(':msgId','1').replace(':emailId','1').replace(':messageId','1')}' -H 'X-API-Key: ${sampleKey}'${ep.method !== 'GET' && ep.method !== 'DELETE' ? " -H 'Content-Type: application/json' -d '{}'" : ''}`
+            return (
+              <div key={i} className="endpoint-card" data-testid={`endpoint-${i}`}>
+                <div className="endpoint-header">
+                  <span className={`method method-${ep.method.toLowerCase()}`}>{ep.method}</span>
+                  <code className="endpoint-path">{ep.path}</code>
+                  <span className="endpoint-tokens">{ep.tokens === 0 ? 'Free' : ep.tokens + ' tokens'}</span>
+                </div>
+                <p className="endpoint-desc">{ep.desc}</p>
+                <div className="endpoint-auth"><Shield size={12}/> {ep.auth}</div>
+                <div className="endpoint-example">
+                  <code>{cmd}</code>
+                  <button onClick={() => copyExample(cmd, i)} className="btn btn-icon" data-testid={`copy-example-${i}`}>
+                    {copied === i ? <Check size={14}/> : <Copy size={14}/>}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/inbox" element={<ProtectedRoute><DashboardLayout><InboxPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/emails" element={<ProtectedRoute><DashboardLayout><EmailsPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/token" element={<ProtectedRoute><DashboardLayout><TokenPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/send" element={<ProtectedRoute><DashboardLayout><SendMailPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/keys" element={<ProtectedRoute><DashboardLayout><ApiKeysPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="/docs" element={<ProtectedRoute><DashboardLayout><ApiDocsPage /></DashboardLayout></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}
+
+export default App

@@ -1,0 +1,46 @@
+2026-05-15 17:28:26 +00:00: SMTP Server listening on port 2525
+2026-05-15 17:28:26 +00:00: Redis connected for SMTP
+2026-05-15 17:34:11 +00:00: SMTP Connection from 127.0.0.1
+2026-05-15 17:34:13 +00:00: Mail from: test@sender.com
+2026-05-15 17:34:13 +00:00: Recipient accepted: smtptest@temp.amitbrand.shop
+2026-05-15 17:34:37 +00:00: SMTP Connection from 127.0.0.1
+2026-05-15 17:34:37 +00:00: Mail from: automated@test.local
+2026-05-15 17:34:37 +00:00: Recipient accepted: smtptest@temp.amitbrand.shop
+2026-05-15 17:34:37 +00:00: Message saved for smtptest@temp.amitbrand.shop: SMTP Test - Automated
+2026-05-15 17:56:34 +00:00: SMTP Connection from 35.184.53.215
+2026-05-15 17:57:08 +00:00: SMTP Connection from 35.184.53.215
+2026-05-15 17:57:08 +00:00: Mail from: test@external.com
+2026-05-15 17:57:08 +00:00: Recipient accepted: 51e15557b731961a@temp.amitbrand.shop
+2026-05-15 17:57:08 +00:00: Message saved for 51e15557b731961a@temp.amitbrand.shop: Direct VPS Test from E1
+2026-05-15 18:11:28 +00:00: SMTP Connection from 35.184.53.215
+2026-05-15 18:11:37 +00:00: SMTP Connection from 35.184.53.215
+2026-05-15 18:11:37 +00:00: Mail from: mxtest@external.com
+2026-05-15 18:11:37 +00:00: Recipient accepted: 51e15557b731961a@temp.amitbrand.shop
+2026-05-15 18:11:38 +00:00: Message saved for 51e15557b731961a@temp.amitbrand.shop: MX Test - End to End
+2026-05-15 18:12:04 +00:00: SMTP Connection from 35.184.53.215
+2026-05-15 18:12:04 +00:00: Mail from: gmail.simulator@test.com
+2026-05-15 18:12:04 +00:00: Recipient accepted: e9b0089da6fe5e00@temp.amitbrand.shop
+2026-05-15 18:12:04 +00:00: Message saved for e9b0089da6fe5e00@temp.amitbrand.shop: Final Test temp
+2026-05-15 18:13:47 +00:00: SMTP Connection from 209.85.217.67
+2026-05-15 18:13:48 +00:00: Mail from: vikrantranahome@gmail.com
+2026-05-15 18:13:48 +00:00: Recipient accepted: soul@temp.amitbrand.shop
+2026-05-15 18:13:48 +00:00: Message saved for soul@temp.amitbrand.shop: ss
+2026-05-15 18:17:01 +00:00: SMTP Connection from 74.125.82.68
+2026-05-15 18:17:02 +00:00: Mail from: vikrantranahome@gmail.com
+2026-05-15 18:17:02 +00:00: Recipient accepted: e9b0089da6fe5e00@temp.amitbrand.shop
+2026-05-15 18:17:02 +00:00: Message saved for e9b0089da6fe5e00@temp.amitbrand.shop: s
+2026-05-15 18:28:10 +00:00: SMTP Connection from 172.31.20.29
+2026-05-15 18:28:10 +00:00: Mail from: 691f920dcb71a02e@temp.amitbrand.shop
+2026-05-15 18:28:10 +00:00: Recipient accepted: soul@temp.amitbrand.shop
+2026-05-15 18:28:10 +00:00: Message saved for soul@temp.amitbrand.shop: E2E Loopback Test
+2026-05-15 18:34:50 +00:00: SMTP Connection from 172.31.20.29
+2026-05-15 18:34:50 +00:00: Mail from: soul@temp.amitbrand.shop
+2026-05-15 18:34:50 +00:00: Rejected: Invalid domain gmail.com
+2026-05-15 18:51:20 +00:00: SMTP Connection from 74.125.82.68
+2026-05-15 18:51:21 +00:00: Mail from: vikrantranahome@gmail.com
+2026-05-15 18:51:21 +00:00: Recipient accepted: e9b0089da6fe5e00@temp.amitbrand.shop
+2026-05-15 18:51:21 +00:00: Message saved for e9b0089da6fe5e00@temp.amitbrand.shop: hu
+2026-05-15 18:54:45 +00:00: SMTP Connection from 74.125.82.65
+2026-05-15 18:54:46 +00:00: Mail from: vikrantranahome@gmail.com
+2026-05-15 18:54:46 +00:00: Recipient accepted: a7d4eeda848a5e87@temp.amitbrand.shop
+2026-05-15 18:54:46 +00:00: Message saved for a7d4eeda848a5e87@temp.amitbrand.shop: hi

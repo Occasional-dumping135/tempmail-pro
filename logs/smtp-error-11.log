@@ -1,0 +1,42 @@
+2026-05-15 16:47:24 +00:00: SMTP Server error: Error: bind EACCES 0.0.0.0:25
+    at listenOnPrimaryHandle (node:net:1989:18)
+    at rr (node:internal/cluster/child:163:12)
+    at Worker.<anonymous> (node:internal/cluster/child:113:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:536:35)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'bind',
+  address: '0.0.0.0',
+  port: 25
+}
+2026-05-15 17:27:58 +00:00: SMTP Server error: Error: bind EACCES 0.0.0.0:25
+    at listenOnPrimaryHandle (node:net:1989:18)
+    at rr (node:internal/cluster/child:163:12)
+    at Worker.<anonymous> (node:internal/cluster/child:113:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:536:35)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'bind',
+  address: '0.0.0.0',
+  port: 25
+}
+2026-05-15 17:28:16 +00:00: SMTP Server error: Error: bind EACCES 0.0.0.0:25
+    at listenOnPrimaryHandle (node:net:1989:18)
+    at rr (node:internal/cluster/child:163:12)
+    at Worker.<anonymous> (node:internal/cluster/child:113:7)
+    at process.onInternalMessage (node:internal/cluster/utils:49:5)
+    at process.emit (node:events:536:35)
+    at emit (node:internal/child_process:950:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21) {
+  errno: -13,
+  code: 'EACCES',
+  syscall: 'bind',
+  address: '0.0.0.0',
+  port: 25
+}

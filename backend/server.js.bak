@@ -1,0 +1,532 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const http = require('http');
+const { Server } = require('socket.io');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
+const { createClient } = require('redis');
+const rateLimit = require('express-rate-limit');
+const cron = require('node-cron');
+
+const app = express();
+const server = http.createServer(app);
+
+// Socket.IO setup
+const io = new Server(server, {
+  cors: {
+    origin: ['https://temp.amitbrand.shop', 'https://soul.amitbrand.shop', 'https://crack.amitbrand.shop', 'http://localhost:3000'],
+    methods: ['GET', 'POST']
+  }
+});
+
+// PostgreSQL connection pool
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  max: 100,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000
+});
+
+// Redis client with proper configuration
+let redisClient;
+let redisReady = false;
+
+(async () => {
+  try {
+    redisClient = createClient({
+      socket: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT) || 6379
+      }
+    });
+    redisClient.on('error', (err) => console.error('Redis error:', err));
+    redisClient.on('connect', () => console.log('Redis connecting...'));
+    redisClient.on('ready', () => {
+      console.log('Redis ready');
+      redisReady = true;
+    });
+    await redisClient.connect();
+  } catch (err) {
+    console.error('Redis connection failed:', err);
+  }
+})();
+
+// Middleware
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+app.use(cors({
+  origin: ['https://temp.amitbrand.shop', 'https://soul.amitbrand.shop', 'https://crack.amitbrand.shop', 'http://localhost:3000'],
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(morgan('combined'));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 1000,
+  message: { error: 'Too many requests, please try again later.' }
+});
+app.use('/api', limiter);
+
+// Utility functions
+function generateToken() {
+  return crypto.randomBytes(20).toString('hex');
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// Token consumption middleware
+async function consumeTokens(req, res, next) {
+  const tokenCost = req.tokenCost || 1;
+  const tokenId = req.tokenId;
+  
+  if (!tokenId) return next();
+  
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    let currentUsage = 0;
+    
+    if (redisReady) {
+      const usageKey = 'usage:' + tokenId + ':' + today;
+      const cachedUsage = await redisClient.get(usageKey);
+      if (cachedUsage) {
+        currentUsage = parseInt(cachedUsage);
+      }
+    }
+    
+    if (currentUsage === 0) {
+      const dbUsage = await pool.query(
+        'SELECT calls_count FROM token_usage WHERE token_id = $1 AND usage_date = $2',
+        [tokenId, today]
+      );
+      currentUsage = dbUsage.rows[0]?.calls_count || 0;
+    }
+    
+    if (currentUsage + tokenCost > parseInt(process.env.DAILY_TOKEN_LIMIT)) {
+      return res.status(429).json({ error: 'Daily token limit exceeded', usage: currentUsage, limit: process.env.DAILY_TOKEN_LIMIT });
+    }
+    
+    const newUsage = currentUsage + tokenCost;
+    
+    if (redisReady) {
+      const usageKey = 'usage:' + tokenId + ':' + today;
+      await redisClient.set(usageKey, newUsage.toString(), { EX: 86400 });
+    }
+    
+    await pool.query(
+      'INSERT INTO token_usage (token_id, usage_date, calls_count, last_reset) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) ON CONFLICT (token_id, usage_date) DO UPDATE SET calls_count = $3, last_reset = CURRENT_TIMESTAMP',
+      [tokenId, today, newUsage]
+    );
+    
+    await pool.query(
+      'INSERT INTO api_logs (token_id, endpoint, tokens_consumed) VALUES ($1, $2, $3)',
+      [tokenId, req.originalUrl, tokenCost]
+    );
+    
+    req.currentUsage = newUsage;
+    next();
+  } catch (err) {
+    console.error('Token consumption error:', err);
+    next();
+  }
+}
+
+// Auth middleware
+async function authMiddleware(req, res, next) {
+  // X-API-Key support
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey) {
+    if (!apiKey.startsWith('mtak_') || apiKey.length !== 41) {
+      return res.status(401).json({ error: 'Invalid X-API-Key format' });
+    }
+    try {
+      const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+      const r = await pool.query('SELECT id, token_id FROM access_keys WHERE key_hash = $1 AND is_active = TRUE', [keyHash]);
+      if (r.rows.length === 0) return res.status(401).json({ error: 'Invalid or revoked API key' });
+      req.tokenId = r.rows[0].token_id;
+      req.accessKeyId = r.rows[0].id;
+      pool.query('UPDATE access_keys SET last_used_at = NOW() WHERE id = $1', [r.rows[0].id]).catch(() => {});
+      return next();
+    } catch (err) {
+      console.error('API key auth error:', err);
+      return res.status(500).json({ error: 'Auth failed' });
+    }
+  }
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
+  
+  const tokenOrJwt = authHeader.substring(7);
+  
+  try {
+    if (tokenOrJwt.includes('.')) {
+      const decoded = jwt.verify(tokenOrJwt, process.env.JWT_SECRET);
+      req.tokenId = decoded.tokenId;
+      req.userToken = decoded.token;
+      return next();
+    }
+    
+    if (tokenOrJwt.length !== 40) {
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+    
+    const tokenHash = hashToken(tokenOrJwt);
+    const result = await pool.query(
+      'SELECT id FROM tokens WHERE token_hash = $1 AND is_active = TRUE',
+      [tokenHash]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or inactive token' });
+    }
+    
+    req.tokenId = result.rows[0].id;
+    req.userToken = tokenOrJwt;
+    next();
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+    console.error('Auth error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+}
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(), 
+    service: 'Temp Amit Brands API',
+    redis: redisReady ? 'connected' : 'disconnected'
+  });
+});
+
+// Signup
+app.post('/api/v1/auth/signup', async (req, res) => {
+  try {
+    const token = generateToken();
+    const tokenHash = hashToken(token);
+    
+    const result = await pool.query(
+      'INSERT INTO tokens (token, token_hash) VALUES ($1, $2) RETURNING id, created_at',
+      [token, tokenHash]
+    );
+    
+    if (redisReady) {
+      await redisClient.set('token:' + tokenHash, result.rows[0].id.toString(), { EX: 86400 * 30 });
+    }
+    
+    res.status(201).json({
+      success: true,
+      token,
+      message: 'Token generated successfully. Save this token - it is your only way to access your account.',
+      created_at: result.rows[0].created_at
+    });
+  } catch (err) {
+    console.error('Signup error:', err);
+    res.status(500).json({ error: 'Failed to generate token' });
+  }
+});
+
+// Login
+app.post('/api/v1/auth/login', async (req, res) => {
+  const { token } = req.body;
+  
+  if (!token || token.length !== 40) {
+    return res.status(400).json({ error: 'Invalid token format. Token must be 40 characters.' });
+  }
+  
+  try {
+    const tokenHash = hashToken(token);
+    const result = await pool.query(
+      'SELECT id, created_at, daily_limit FROM tokens WHERE token_hash = $1 AND is_active = TRUE',
+      [tokenHash]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or inactive token' });
+    }
+    
+    const tokenData = result.rows[0];
+    
+    const jwtToken = jwt.sign(
+      { tokenId: tokenData.id, token },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    const today = new Date().toISOString().split('T')[0];
+    const usageResult = await pool.query(
+      'SELECT calls_count FROM token_usage WHERE token_id = $1 AND usage_date = $2',
+      [tokenData.id, today]
+    );
+    
+    res.json({
+      success: true,
+      session_token: jwtToken,
+      daily_limit: tokenData.daily_limit,
+      current_usage: usageResult.rows[0]?.calls_count || 0,
+      created_at: tokenData.created_at
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Create email
+app.post('/api/v1/email/create', authMiddleware, (req, res, next) => { req.tokenCost = 5; next(); }, consumeTokens, async (req, res) => {
+  const { type, name, subdomain } = req.body;
+  const validSubdomains = process.env.SUBDOMAINS.split(',');
+  
+  if (!subdomain || !validSubdomains.includes(subdomain)) {
+    return res.status(400).json({ error: 'Invalid subdomain. Choose from: ' + validSubdomains.join(', ') });
+  }
+  
+  try {
+    let emailAddress;
+    
+    if (type === 'random') {
+      emailAddress = crypto.randomBytes(8).toString('hex');
+    } else if (type === 'custom') {
+      if (!name || !/^[a-zA-Z0-9._-]+$/.test(name)) {
+        return res.status(400).json({ error: 'Invalid email name. Use only letters, numbers, dots, underscores, and hyphens.' });
+      }
+      emailAddress = name.toLowerCase();
+    } else {
+      return res.status(400).json({ error: 'Type must be "random" or "custom"' });
+    }
+    
+    const fullAddress = emailAddress + '@' + subdomain + '.' + process.env.DOMAIN;
+    
+    const existing = await pool.query('SELECT id FROM emails WHERE full_address = $1', [fullAddress]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Email address already exists' });
+    }
+    
+    const result = await pool.query(
+      'INSERT INTO emails (token_id, address, subdomain, full_address) VALUES ($1, $2, $3, $4) RETURNING id, full_address, created_at, expires_at',
+      [req.tokenId, emailAddress, subdomain, fullAddress]
+    );
+    
+    const email = result.rows[0];
+    
+    res.status(201).json({
+      success: true,
+      email: {
+        id: email.id,
+        address: email.full_address,
+        created_at: email.created_at,
+        expires_at: email.expires_at
+      },
+      tokens_consumed: 5,
+      current_usage: req.currentUsage
+    });
+  } catch (err) {
+    console.error('Create email error:', err);
+    res.status(500).json({ error: 'Failed to create email address' });
+  }
+});
+
+// List emails
+app.get('/api/v1/email/list', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT e.id, e.full_address as address, e.subdomain, e.created_at, e.expires_at, (SELECT COUNT(*) FROM messages m WHERE m.email_id = e.id) as message_count, (SELECT COUNT(*) FROM messages m WHERE m.email_id = e.id AND m.is_read = FALSE) as unread_count FROM emails e WHERE e.token_id = $1 AND e.expires_at > NOW() ORDER BY e.created_at DESC',
+      [req.tokenId]
+    );
+    
+    res.json({
+      success: true,
+      emails: result.rows,
+      count: result.rows.length,
+      tokens_consumed: 0
+    });
+  } catch (err) {
+    console.error('List emails error:', err);
+    res.status(500).json({ error: 'Failed to list emails' });
+  }
+});
+
+// Get messages
+app.get('/api/v1/email/:emailId/messages', authMiddleware, (req, res, next) => { req.tokenCost = 3; next(); }, consumeTokens, async (req, res) => {
+  const { emailId } = req.params;
+  
+  try {
+    const emailCheck = await pool.query(
+      'SELECT id FROM emails WHERE id = $1 AND token_id = $2',
+      [emailId, req.tokenId]
+    );
+    
+    if (emailCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Email not found or not owned by you' });
+    }
+    
+    const result = await pool.query(
+      'SELECT id, sender, subject, body_text, received_at, is_read FROM messages WHERE email_id = $1 ORDER BY received_at DESC',
+      [emailId]
+    );
+    
+    res.json({
+      success: true,
+      messages: result.rows,
+      count: result.rows.length,
+      tokens_consumed: 3,
+      current_usage: req.currentUsage
+    });
+  } catch (err) {
+    console.error('Get messages error:', err);
+    res.status(500).json({ error: 'Failed to get messages' });
+  }
+});
+
+// Get specific message
+app.get('/api/v1/email/:emailId/messages/:messageId', authMiddleware, (req, res, next) => { req.tokenCost = 1; next(); }, consumeTokens, async (req, res) => {
+  const { emailId, messageId } = req.params;
+  
+  try {
+    const emailCheck = await pool.query(
+      'SELECT id FROM emails WHERE id = $1 AND token_id = $2',
+      [emailId, req.tokenId]
+    );
+    
+    if (emailCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Email not found or not owned by you' });
+    }
+    
+    const result = await pool.query(
+      'SELECT id, sender, subject, body_text, body_html, received_at, is_read FROM messages WHERE id = $1 AND email_id = $2',
+      [messageId, emailId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    
+    await pool.query('UPDATE messages SET is_read = TRUE WHERE id = $1', [messageId]);
+    
+    res.json({
+      success: true,
+      message: result.rows[0],
+      tokens_consumed: 1,
+      current_usage: req.currentUsage
+    });
+  } catch (err) {
+    console.error('Get message error:', err);
+    res.status(500).json({ error: 'Failed to get message' });
+  }
+});
+
+// Delete email
+app.delete('/api/v1/email/:emailId', authMiddleware, (req, res, next) => { req.tokenCost = 2; next(); }, consumeTokens, async (req, res) => {
+  const { emailId } = req.params;
+  
+  try {
+    const result = await pool.query(
+      'DELETE FROM emails WHERE id = $1 AND token_id = $2 RETURNING id',
+      [emailId, req.tokenId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Email not found or not owned by you' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Email deleted successfully',
+      tokens_consumed: 0
+    });
+  } catch (err) {
+    console.error('Delete email error:', err);
+    res.status(500).json({ error: 'Failed to delete email' });
+  }
+});
+
+// Get token usage
+app.get('/api/v1/token/usage', authMiddleware, async (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    const result = await pool.query(
+      'SELECT calls_count FROM token_usage WHERE token_id = $1 AND usage_date = $2',
+      [req.tokenId, today]
+    );
+    
+    const tokenInfo = await pool.query(
+      'SELECT daily_limit, created_at FROM tokens WHERE id = $1',
+      [req.tokenId]
+    );
+    
+    res.json({
+      success: true,
+      usage: {
+        today: result.rows[0]?.calls_count || 0,
+        limit: tokenInfo.rows[0]?.daily_limit || parseInt(process.env.DAILY_TOKEN_LIMIT),
+        remaining: (tokenInfo.rows[0]?.daily_limit || parseInt(process.env.DAILY_TOKEN_LIMIT)) - (result.rows[0]?.calls_count || 0),
+        account_created: tokenInfo.rows[0]?.created_at
+      },
+      tokens_consumed: 0
+    });
+  } catch (err) {
+    console.error('Get usage error:', err);
+    res.status(500).json({ error: 'Failed to get usage' });
+  }
+});
+
+// Expose middlewares to mountExtra
+app.locals.authMiddleware = authMiddleware;
+app.locals.consumeTokens = consumeTokens;
+require('./api-extra').mountExtra(app, pool, redisClient);
+
+// WebSocket handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  socket.on('subscribe', async (data) => {
+    if (data.emailId) {
+      socket.join('email:' + data.emailId);
+    }
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+function notifyNewEmail(emailId, message) {
+  io.to('email:' + emailId).emit('new_email', message);
+}
+
+module.exports = { pool, notifyNewEmail, io };
+
+// Cleanup cron job
+cron.schedule('0 * * * *', async () => {
+  console.log('Running cleanup job...');
+  try {
+    const result = await pool.query('DELETE FROM emails WHERE expires_at < NOW() RETURNING id');
+    console.log('Deleted ' + result.rowCount + ' expired emails');
+  } catch (err) {
+    console.error('Cleanup error:', err);
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log('Temp Amit Brands API running on port ' + PORT);
+});
