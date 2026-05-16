@@ -44,3 +44,25 @@
 2026-05-15 18:54:46 +00:00: Mail from: vikrantranahome@gmail.com
 2026-05-15 18:54:46 +00:00: Recipient accepted: a7d4eeda848a5e87@temp.amitbrand.shop
 2026-05-15 18:54:46 +00:00: Message saved for a7d4eeda848a5e87@temp.amitbrand.shop: hi
+2026-05-15 22:56:03 +00:00: SMTP Connection from 185.169.4.19
+2026-05-15 22:56:03 +00:00: Mail from: spameri@tiscali.it
+2026-05-15 22:56:03 +00:00: Rejected: Invalid domain tiscali.it
+2026-05-16 04:23:35 +00:00: SMTP Connection from 172.31.20.29
+2026-05-16 04:23:35 +00:00: Mail from: soul@temp.amitbrand.shop
+2026-05-16 04:23:35 +00:00: Rejected: Invalid domain gmail.com
+2026-05-16 04:24:43 +00:00: SMTP Connection from 209.85.222.67
+2026-05-16 04:24:43 +00:00: Mail from: vikrantranahome@gmail.com
+2026-05-16 04:24:43 +00:00: Recipient accepted: 2e778eb598b69fd1@soul.amitbrand.shop
+2026-05-16 04:24:44 +00:00: Message saved for 2e778eb598b69fd1@soul.amitbrand.shop: sa
+2026-05-16 04:35:54 +00:00: SMTP Connection from 172.31.20.29
+2026-05-16 04:35:54 +00:00: Mail from: bbc2a75dab0d5a91@temp.amitbrand.shop
+2026-05-16 04:35:54 +00:00: Rejected: Invalid domain gmail.com
+2026-05-16 04:39:09 +00:00: SMTP Connection from 172.31.20.29
+2026-05-16 04:39:09 +00:00: Mail from: bbc2a75dab0d5a91@temp.amitbrand.shop
+2026-05-16 04:39:09 +00:00: Rejected: Invalid domain gmail.com
+2026-05-16 04:40:58 +00:00: SMTP Connection from 172.31.20.29
+2026-05-16 04:40:58 +00:00: Mail from: bbc2a75dab0d5a91@temp.amitbrand.shop
+2026-05-16 04:40:58 +00:00: Rejected: Invalid domain gmail.com
+2026-05-16 04:41:47 +00:00: SMTP Connection from 127.0.0.1
+2026-05-16 04:41:48 +00:00: Mail from: test@example.com
+2026-05-16 04:41:49 +00:00: Recipient accepted: bbc2a75dab0d5a91@temp.amitbrand.shop

@@ -1,9 +1,47 @@
-import { useState, useEffect, useCallback, createContext, useContext } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Plus, Trash2, Copy, Download, RefreshCw, Eye, Menu, X, Check, Clock, LogOut, Shield, Inbox, Send, Key, Settings, User, ChevronRight, Sparkles, Globe, Zap, Bell, Search, MailOpen, FileCode, KeyRound, AlertCircle , Webhook, BarChart3, RotateCcw, Activity, Play } from 'lucide-react'
-import './App.css'
+import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react"
+import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useLocation } from "react-router-dom"
+import { 
+  Mail, Plus, Trash2, Copy, Download, RefreshCw, Eye, Menu, X, Check, Clock, LogOut, 
+  Shield, Inbox, Send, Key, Settings, User, ChevronRight, ChevronLeft, Sparkles, Globe, Zap, Bell, 
+  Search, MailOpen, FileCode, KeyRound, AlertCircle, Webhook, BarChart3, RotateCcw, Activity, 
+  Play, Star, Paperclip, ExternalLink, CheckCircle, XCircle, ArrowRight, Lock
+} from "lucide-react"
+import "./App.css"
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.amitbrand.shop/api'
+const API_URL = import.meta.env.VITE_API_URL || "https://api.amitbrand.shop/api"
+
+// Toast notification system
+const ToastContext = createContext(null)
+
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([])
+  
+  const addToast = (message, type = "info") => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
+  }
+  
+  return (
+    <ToastContext.Provider value={{ addToast }}>
+      {children}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div key={toast.id} className={`toast toast-${toast.type}`}>
+            {toast.type === "success" && <CheckCircle size={18} />}
+            {toast.type === "error" && <XCircle size={18} />}
+            {toast.type === "info" && <Bell size={18} />}
+            <span>{toast.message}</span>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  )
+}
+
+function useToast() {
+  return useContext(ToastContext)
+}
 
 // Auth Context
 const AuthContext = createContext(null)
@@ -14,13 +52,13 @@ function useAuth() {
 
 function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [sessionToken, setSessionToken] = useState('')
-  const [userToken, setUserToken] = useState('')
+  const [sessionToken, setSessionToken] = useState("")
+  const [userToken, setUserToken] = useState("")
   const [usage, setUsage] = useState({ today: 0, limit: 200000, remaining: 200000 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const saved = localStorage.getItem('mailtemp_session')
+    const saved = localStorage.getItem("mailtemp_session")
     if (saved) {
       try {
         const { token, session } = JSON.parse(saved)
@@ -28,7 +66,7 @@ function AuthProvider({ children }) {
         setUserToken(token)
         setIsLoggedIn(true)
       } catch (e) {
-        localStorage.removeItem('mailtemp_session')
+        localStorage.removeItem("mailtemp_session")
       }
     }
     setLoading(false)
@@ -36,45 +74,55 @@ function AuthProvider({ children }) {
 
   const api = useCallback(async (endpoint, options = {}) => {
     const headers = {
-      'Content-Type': 'application/json',
-      ...(sessionToken && { 'Authorization': `Bearer ${sessionToken}` })
+      "Content-Type": "application/json",
+      ...(sessionToken && { "Authorization": `Bearer ${sessionToken}` })
     }
     const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers })
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Request failed')
+    if (!res.ok) throw new Error(data.error || "Request failed")
     return data
   }, [sessionToken])
 
   const login = async (token) => {
-    const data = await api('/v1/auth/login', {
-      method: 'POST',
+    const res = await fetch(`${API_URL}/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token })
     })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || "Login failed")
     setSessionToken(data.session_token)
     setUserToken(token)
     setIsLoggedIn(true)
     setUsage({ today: data.current_usage || 0, limit: data.daily_limit || 200000, remaining: (data.daily_limit || 200000) - (data.current_usage || 0) })
-    localStorage.setItem('mailtemp_session', JSON.stringify({ token, session: data.session_token }))
+    localStorage.setItem("mailtemp_session", JSON.stringify({ token, session: data.session_token }))
     return data
   }
 
   const logout = () => {
     setIsLoggedIn(false)
-    setSessionToken('')
-    setUserToken('')
-    localStorage.removeItem('mailtemp_session')
+    setSessionToken("")
+    setUserToken("")
+    localStorage.removeItem("mailtemp_session")
   }
 
   const fetchUsage = async () => {
     try {
-      const data = await api('/v1/token/usage')
+      const data = await api("/v1/token/usage")
       setUsage(data.usage)
     } catch (err) {
-      console.error('Usage fetch error:', err)
+      console.error("Usage fetch error:", err)
     }
   }
 
-  if (loading) return <div className="loading-screen"><div className="loader"></div></div>
+  if (loading) return (
+    <div className="loading-screen">
+      <div className="loading-spinner">
+        <Mail size={48} className="spin" />
+      </div>
+      <p>Loading...</p>
+    </div>
+  )
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, sessionToken, userToken, usage, api, login, logout, fetchUsage, setUsage }}>
@@ -90,176 +138,329 @@ function ProtectedRoute({ children }) {
   return children
 }
 
-// Landing Page
+// ============== LANDING PAGE ==============
 function LandingPage() {
   const { isLoggedIn } = useAuth()
+  const [isVisible, setIsVisible] = useState(false)
+  
+  useEffect(() => {
+    setIsVisible(true)
+  }, [])
+  
   if (isLoggedIn) return <Navigate to="/inbox" replace />
 
   return (
-    <div className="landing">
+    <div className="landing-page">
+      {/* Navigation */}
       <nav className="landing-nav" data-testid="landing-nav">
-        <div className="nav-brand">
-          <Mail className="brand-icon" />
-          <span>Temp Amit Brands</span>
-        </div>
-        <div className="nav-actions">
-          <Link to="/login" className="btn btn-ghost" data-testid="nav-login-btn">Login</Link>
-          <Link to="/signup" className="btn btn-primary" data-testid="nav-signup-btn">Get Started</Link>
+        <div className="nav-container">
+          <Link to="/" className="nav-logo">
+            <div className="logo-icon">
+              <Mail size={24} />
+            </div>
+            <span className="logo-text">TempMail</span>
+          </Link>
+          <div className="nav-links">
+            <Link to="/login" className="nav-link" data-testid="nav-login-btn">Login</Link>
+            <Link to="/signup" className="btn btn-primary btn-glow" data-testid="nav-signup-btn">
+              Get Started <ArrowRight size={16} />
+            </Link>
+          </div>
         </div>
       </nav>
 
-      <main className="hero">
-        <div className="hero-badge">
-          <Sparkles size={16} /> Privacy-First Email Service
-        </div>
-        <h1><span class="hero-title-top">Temporary Email</span><br /><span className="gradient-text">Without the Hassle</span></h1>
-        <p className="hero-subtitle">No registration. No passwords. Just instant, disposable email addresses powered by token-based authentication.</p>
-        
-        <div className="hero-actions">
-          <Link to="/signup" className="btn btn-primary btn-lg" data-testid="hero-get-started-btn">
-            <Key size={20} /> Get Your Token
-          </Link>
-          <Link to="/login" className="btn btn-secondary btn-lg" data-testid="hero-login-btn">
-            Already have a token?
-          </Link>
-        </div>
+      {/* Hero Section */}
+      <section className={`hero-section ${isVisible ? "visible" : ""}`}>
+        <div className="hero-container">
+          <div className="hero-badge">
+            <Sparkles size={14} />
+            <span>Privacy-First Email Service</span>
+          </div>
+          
+          <h1 className="hero-title">
+            Temporary Email
+            <span className="gradient-text">Without the Hassle</span>
+          </h1>
+          
+          <p className="hero-description">
+            No registration. No passwords. Just instant, disposable email addresses 
+            powered by token-based authentication. Your privacy, simplified.
+          </p>
+          
+          <div className="hero-cta">
+            <Link to="/signup" className="btn btn-primary btn-lg btn-glow" data-testid="hero-get-started-btn">
+              <Key size={20} />
+              Get Your Token
+            </Link>
+            <Link to="/login" className="btn btn-outline btn-lg" data-testid="hero-login-btn">
+              Already have a token?
+            </Link>
+          </div>
 
-        <div className="features-grid">
-          <div className="feature-card" data-testid="feature-privacy">
-            <div className="feature-icon"><Shield size={24} /></div>
-            <h3>Complete Privacy</h3>
-            <p>No personal info required. Your 40-character token is your only identity.</p>
-          </div>
-          <div className="feature-card" data-testid="feature-instant">
-            <div className="feature-icon"><Zap size={24} /></div>
-            <h3>Instant Setup</h3>
-            <p>Generate a token and start receiving emails in under 30 seconds.</p>
-          </div>
-          <div className="feature-card" data-testid="feature-domains">
-            <div className="feature-icon"><Globe size={24} /></div>
-            <h3>Multiple Domains</h3>
-            <p>Choose from temp, soul, or crack subdomains for your addresses.</p>
-          </div>
-          <div className="feature-card" data-testid="feature-realtime">
-            <div className="feature-icon"><Bell size={24} /></div>
-            <h3>Real-time Updates</h3>
-            <p>Receive emails instantly with live inbox updates.</p>
+          {/* Floating Elements */}
+          <div className="hero-visual">
+            <div className="floating-card card-1">
+              <Mail size={20} />
+              <span>New email received</span>
+            </div>
+            <div className="floating-card card-2">
+              <Shield size={20} />
+              <span>100% Anonymous</span>
+            </div>
+            <div className="floating-card card-3">
+              <Zap size={20} />
+              <span>Instant delivery</span>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div className="stats-section">
-          <div className="stat-item">
-            <span className="stat-value">400K+</span>
+      {/* Features Section */}
+      <section className="features-section">
+        <div className="features-container">
+          <div className="section-header">
+            <h2>Why Choose TempMail?</h2>
+            <p>Everything you need for disposable email, nothing you dont.</p>
+          </div>
+          
+          <div className="features-grid">
+            <div className="feature-card" data-testid="feature-privacy">
+              <div className="feature-icon">
+                <Shield size={28} />
+              </div>
+              <h3>Complete Privacy</h3>
+              <p>No personal info required. Your 40-character token is your only identity. No tracking, no data selling.</p>
+            </div>
+            
+            <div className="feature-card" data-testid="feature-instant">
+              <div className="feature-icon">
+                <Zap size={28} />
+              </div>
+              <h3>Instant Setup</h3>
+              <p>Generate a token and start receiving emails in under 30 seconds. No verification needed.</p>
+            </div>
+            
+            <div className="feature-card" data-testid="feature-domains">
+              <div className="feature-icon">
+                <Globe size={28} />
+              </div>
+              <h3>Multiple Domains</h3>
+              <p>Choose from temp, soul, or crack subdomains for your addresses. Variety for every need.</p>
+            </div>
+            
+            <div className="feature-card" data-testid="feature-realtime">
+              <div className="feature-icon">
+                <Bell size={28} />
+              </div>
+              <h3>Real-time Updates</h3>
+              <p>Receive emails instantly with live inbox updates. Never miss an important message.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="stats-section">
+        <div className="stats-container">
+          <div className="stat-card">
+            <span className="stat-number">400K+</span>
             <span className="stat-label">Users Trust Us</span>
           </div>
           <div className="stat-divider"></div>
-          <div className="stat-item">
-            <span className="stat-value">200K</span>
+          <div className="stat-card">
+            <span className="stat-number">200K</span>
             <span className="stat-label">Daily API Calls</span>
           </div>
           <div className="stat-divider"></div>
-          <div className="stat-item">
-            <span className="stat-value">99.9%</span>
+          <div className="stat-card">
+            <span className="stat-number">99.9%</span>
             <span className="stat-label">Uptime</span>
           </div>
         </div>
-      </main>
+      </section>
 
+      {/* CTA Section */}
+      <section className="cta-section">
+        <div className="cta-container">
+          <h2>Ready to protect your inbox?</h2>
+          <p>Start using temporary emails in seconds. No credit card required.</p>
+          <Link to="/signup" className="btn btn-primary btn-lg btn-glow">
+            Create Free Account <ArrowRight size={18} />
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
       <footer className="landing-footer">
-        <p>&copy; 2024 Temp Amit Brands. Privacy-first temporary email service.</p>
+        <div className="footer-container">
+          <div className="footer-brand">
+            <Mail size={20} />
+            <span>TempMail by Amit Brands</span>
+          </div>
+          <p>&copy; 2024 Temp Amit Brands. Privacy-first temporary email service.</p>
+        </div>
       </footer>
     </div>
   )
 }
 
-// Login Page
+// ============== LOGIN PAGE ==============
 function LoginPage() {
-  const [token, setToken] = useState('')
+  const [token, setToken] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
+  const [shake, setShake] = useState(false)
   const { login, isLoggedIn } = useAuth()
+  const { addToast } = useToast()
   const navigate = useNavigate()
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   if (isLoggedIn) return <Navigate to="/inbox" replace />
 
   const handleLogin = async (e) => {
     e.preventDefault()
     if (token.length !== 40) {
-      setError('Token must be exactly 40 characters')
+      setError("Token must be exactly 40 characters")
+      setShake(true)
+      setTimeout(() => setShake(false), 500)
       return
     }
     setLoading(true)
-    setError('')
+    setError("")
     try {
       await login(token)
-      navigate('/inbox')
+      addToast("Welcome back!", "success")
+      navigate("/inbox")
     } catch (err) {
       setError(err.message)
+      setShake(true)
+      setTimeout(() => setShake(false), 500)
     }
     setLoading(false)
   }
 
   return (
     <div className="auth-page">
-      <Link to="/" className="back-link" data-testid="back-to-home"><ChevronRight className="rotate-180" size={16} /> Back to home</Link>
+      <div className="auth-background">
+        <div className="bg-gradient"></div>
+        <div className="bg-grid"></div>
+      </div>
       
-      <div className="auth-card" data-testid="login-card">
-        <div className="auth-icon"><Key size={32} /></div>
+      <Link to="/" className="back-link" data-testid="back-to-home">
+        <ChevronLeft size={18} />
+        Back to home
+      </Link>
+      
+      <div className={`auth-card ${shake ? "shake" : ""}`} data-testid="login-card">
+        <div className="auth-icon">
+          <div className="icon-glow">
+            <Key size={32} />
+          </div>
+        </div>
+        
         <h1>Welcome Back</h1>
         <p className="auth-subtitle">Enter your 40-character token to access your account</p>
         
         <form onSubmit={handleLogin}>
-          {error && <div className="alert alert-error" data-testid="login-error">{error}</div>}
+          {error && (
+            <div className="alert alert-error" data-testid="login-error">
+              <AlertCircle size={16} />
+              <span>{error}</span>
+            </div>
+          )}
           
           <div className="form-group">
-            <label>Your Token</label>
-            <input
-              type="text"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Enter your 40-character token"
-              maxLength={40}
-              className="input input-lg"
-              data-testid="login-token-input"
-              autoFocus
-            />
-            <span className="input-hint">{token.length}/40 characters</span>
+            <label htmlFor="token">Your Token</label>
+            <div className="input-wrapper">
+              <input
+                ref={inputRef}
+                id="token"
+                type="text"
+                value={token}
+                onChange={(e) => setToken(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+                placeholder="Enter your 40-character token"
+                maxLength={40}
+                className="input input-lg"
+                data-testid="login-token-input"
+                spellCheck="false"
+                autoComplete="off"
+              />
+              <Lock size={18} className="input-icon" />
+            </div>
+            <div className="input-meta">
+              <span className="input-hint">Alphanumeric characters only</span>
+              <span className={`char-counter ${token.length === 40 ? "complete" : ""}`}>
+                {token.length}/40
+              </span>
+            </div>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading || token.length !== 40} data-testid="login-submit-btn">
-            {loading ? 'Logging in...' : 'Login'}
+          <button 
+            type="submit" 
+            className="btn btn-primary btn-full btn-lg" 
+            disabled={loading || token.length !== 40}
+            data-testid="login-submit-btn"
+          >
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                Logging in...
+              </>
+            ) : (
+              <>
+                Login
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </form>
 
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
         <div className="auth-footer">
-          <p>Don't have a token? <Link to="/signup" data-testid="go-to-signup">Generate one for free</Link></p>
+          <p>Dont have a token?</p>
+          <Link to="/signup" className="btn btn-outline btn-full" data-testid="go-to-signup">
+            Generate one for free
+          </Link>
         </div>
       </div>
     </div>
   )
 }
 
-// Signup Page
+// ============== SIGNUP PAGE ==============
 function SignupPage() {
-  const [newToken, setNewToken] = useState('')
+  const [newToken, setNewToken] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
   const { isLoggedIn } = useAuth()
+  const { addToast } = useToast()
   const navigate = useNavigate()
 
   if (isLoggedIn) return <Navigate to="/inbox" replace />
 
   const generateToken = async () => {
     setLoading(true)
-    setError('')
+    setError("")
     try {
-      const res = await fetch(`${API_URL}/v1/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      const res = await fetch(`${API_URL}/v1/auth/signup`, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" } 
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setNewToken(data.token)
+      addToast("Token generated successfully!", "success")
     } catch (err) {
       setError(err.message)
+      addToast("Failed to generate token", "error")
     }
     setLoading(false)
   }
@@ -267,131 +468,212 @@ function SignupPage() {
   const copyToken = () => {
     navigator.clipboard.writeText(newToken)
     setCopied(true)
+    addToast("Token copied to clipboard!", "success")
     setTimeout(() => setCopied(false), 2000)
   }
 
   const downloadToken = () => {
-    const content = `Temp Amit Brands - Your Token
-=============================
+    const content = `Temp Amit Brands - Your Access Token
+=====================================
 Token: ${newToken}
 
-IMPORTANT: Save this token! It's your only way to access your account.
+IMPORTANT: Save this token securely! 
+Its your only way to access your account.
 
 How to use:
-1. Go to temp.amitbrand.shop/login
+1. Go to https://temp.amitbrand.shop/login
 2. Enter this 40-character token
 3. Create temporary email addresses
 4. Receive emails instantly
 
-Domains available:
-- temp.amitbrand.shop
-- soul.amitbrand.shop
-- crack.amitbrand.shop
+Available domains:
+- @temp.amitbrand.shop
+- @soul.amitbrand.shop  
+- @crack.amitbrand.shop
 
 Daily Limit: 200,000 API calls
-
-Generated: ${new Date().toISOString()}`
-    const blob = new Blob([content], { type: 'text/plain' })
+Generated: ${new Date().toLocaleString()}`
+    
+    const blob = new Blob([content], { type: "text/plain" })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
+    const a = document.createElement("a")
     a.href = url
-    a.download = 'temp-amit-brands-token.txt'
+    a.download = "tempmail-token.txt"
     a.click()
     URL.revokeObjectURL(url)
+    addToast("Token file downloaded!", "success")
   }
 
   return (
     <div className="auth-page">
-      <Link to="/" className="back-link" data-testid="back-to-home"><ChevronRight className="rotate-180" size={16} /> Back to home</Link>
+      <div className="auth-background">
+        <div className="bg-gradient"></div>
+        <div className="bg-grid"></div>
+      </div>
+      
+      <Link to="/" className="back-link" data-testid="back-to-home">
+        <ChevronLeft size={18} />
+        Back to home
+      </Link>
       
       <div className="auth-card auth-card-wide" data-testid="signup-card">
-        <div className="auth-icon"><Sparkles size={32} /></div>
-        
         {!newToken ? (
           <>
-            <h1>Create Your Token</h1>
-            <p className="auth-subtitle">Generate a unique 40-character token that will be your key to access this service. No email or password needed.</p>
+            <div className="auth-icon">
+              <div className="icon-glow success">
+                <Sparkles size={32} />
+              </div>
+            </div>
             
-            {error && <div className="alert alert-error" data-testid="signup-error">{error}</div>}
+            <h1>Create Your Token</h1>
+            <p className="auth-subtitle">Get started with your private, anonymous email service</p>
+            
+            {error && (
+              <div className="alert alert-error">
+                <AlertCircle size={16} />
+                <span>{error}</span>
+              </div>
+            )}
 
-            <div className="info-box">
-              <h4>What you'll get:</h4>
-              <ul>
-                <li>A unique 40-character access token</li>
-                <li>200,000 API calls per day</li>
-                <li>Multiple email addresses across 3 domains</li>
-                <li>24-hour email retention</li>
-              </ul>
+            <div className="benefits-list">
+              <div className="benefit-item">
+                <CheckCircle size={20} />
+                <span>Unique 40-character access token</span>
+              </div>
+              <div className="benefit-item">
+                <CheckCircle size={20} />
+                <span>200,000 API calls per day</span>
+              </div>
+              <div className="benefit-item">
+                <CheckCircle size={20} />
+                <span>Multiple email addresses across 3 domains</span>
+              </div>
+              <div className="benefit-item">
+                <CheckCircle size={20} />
+                <span>24-hour email retention</span>
+              </div>
             </div>
 
-            <button onClick={generateToken} className="btn btn-primary btn-full btn-lg" disabled={loading} data-testid="generate-token-btn">
-              {loading ? 'Generating...' : 'Generate My Token'}
+            <button 
+              onClick={generateToken} 
+              className="btn btn-primary btn-full btn-lg btn-glow"
+              disabled={loading}
+              data-testid="generate-token-btn"
+            >
+              {loading ? (
+                <>
+                  <span className="spinner"></span>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={20} />
+                  Generate My Token
+                </>
+              )}
             </button>
+
+            <div className="auth-footer">
+              <p>Already have a token? <Link to="/login" data-testid="go-to-login">Login here</Link></p>
+            </div>
           </>
         ) : (
           <>
+            <div className="auth-icon">
+              <div className="icon-glow success">
+                <CheckCircle size={32} />
+              </div>
+            </div>
+            
             <h1>Your Token is Ready!</h1>
-            <p className="auth-subtitle">Save this token securely. It's your only way to access your account.</p>
+            <p className="auth-subtitle warning">
+              <AlertCircle size={16} />
+              Save this token now - you wont see it again
+            </p>
 
-            <div className="token-box" data-testid="generated-token">
-              <code>{newToken}</code>
-              <button onClick={copyToken} className="btn btn-icon" data-testid="copy-token-btn">
+            <div className="token-display">
+              <code data-testid="generated-token">{newToken}</code>
+              <div className="token-actions">
+                <button onClick={copyToken} className="btn btn-icon" title="Copy token">
+                  {copied ? <Check size={18} /> : <Copy size={18} />}
+                </button>
+                <button onClick={downloadToken} className="btn btn-icon" title="Download token">
+                  <Download size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="token-buttons">
+              <button onClick={copyToken} className="btn btn-outline btn-full">
                 {copied ? <Check size={18} /> : <Copy size={18} />}
+                {copied ? "Copied!" : "Copy Token"}
+              </button>
+              <button onClick={downloadToken} className="btn btn-outline btn-full">
+                <Download size={18} />
+                Download as File
               </button>
             </div>
 
-            <div className="warning-box">
-              <strong>Important:</strong> This token cannot be recovered if lost. Download or copy it now!
-            </div>
-
-            <div className="token-actions">
-              <button onClick={downloadToken} className="btn btn-secondary" data-testid="download-token-btn">
-                <Download size={18} /> Download Token
-              </button>
-              <button onClick={() => navigate('/login?token=' + newToken)} className="btn btn-primary" data-testid="go-to-login-btn">
-                Continue to Login
-              </button>
-            </div>
+            <button 
+              onClick={() => navigate("/login")}
+              className="btn btn-primary btn-full btn-lg"
+              data-testid="proceed-to-login"
+            >
+              Continue to Login
+              <ArrowRight size={18} />
+            </button>
           </>
         )}
-
-        <div className="auth-footer">
-          <p>Already have a token? <Link to="/login" data-testid="go-to-login-link">Login here</Link></p>
-        </div>
       </div>
     </div>
   )
 }
 
-// Dashboard Layout
+// ============== DASHBOARD LAYOUT ==============
 function DashboardLayout({ children }) {
-  const { logout, usage, userToken } = useAuth()
+  const { userToken, usage, logout } = useAuth()
+  const { addToast } = useToast()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navItems = [
-    { path: '/inbox', label: 'Inbox', icon: Inbox },
-    { path: '/emails', label: 'My Emails', icon: Mail },
-    { path: '/send', label: 'Send Mail', icon: Send },
-    { path: '/keys', label: 'API Keys', icon: KeyRound },
-    { path: '/docs', label: 'API Docs', icon: FileCode },
-    { path: '/token', label: 'Token Info', icon: Key },
-    { path: '/webhooks', label: 'Webhooks', icon: Webhook },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-    { path: '/settings', label: 'Settings', icon: Settings },
+    { path: "/inbox", icon: Inbox, label: "Inbox" },
+    { path: "/emails", icon: Mail, label: "Addresses" },
+    { path: "/send", icon: Send, label: "Compose" },
+    { path: "/keys", icon: Key, label: "API Keys" },
+    { path: "/webhooks", icon: Webhook, label: "Webhooks" },
+    { path: "/analytics", icon: BarChart3, label: "Analytics" },
+    { path: "/docs", icon: FileCode, label: "API Docs" },
   ]
+
+  const copyToken = () => {
+    navigator.clipboard.writeText(userToken)
+    addToast("Token copied!", "success")
+  }
 
   return (
     <div className="dashboard">
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} data-testid="dashboard-sidebar">
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <div className="mobile-logo">
+          <Mail size={20} />
+          <span>TempMail</span>
+        </div>
+        <button className="btn btn-icon" onClick={logout}>
+          <LogOut size={20} />
+        </button>
+      </header>
+
+      {/* Sidebar */}
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
-          <div className="brand">
+          <Link to="/inbox" className="sidebar-logo">
             <Mail size={24} />
-            <span>Temp Mail</span>
-          </div>
-          <button className="btn btn-icon mobile-close" onClick={() => setSidebarOpen(false)}>
-            <X size={20} />
-          </button>
+            <span>TempMail</span>
+          </Link>
         </div>
 
         <nav className="sidebar-nav">
@@ -399,9 +681,8 @@ function DashboardLayout({ children }) {
             <Link
               key={item.path}
               to={item.path}
-              className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+              className={`nav-item ${location.pathname === item.path ? "active" : ""}`}
               onClick={() => setSidebarOpen(false)}
-              data-testid={`nav-${item.path.slice(1)}`}
             >
               <item.icon size={20} />
               <span>{item.label}</span>
@@ -410,204 +691,225 @@ function DashboardLayout({ children }) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="usage-widget" data-testid="usage-widget">
+          <div className="usage-card">
             <div className="usage-header">
+              <Activity size={16} />
               <span>Daily Usage</span>
-              <span>{((usage.today / usage.limit) * 100).toFixed(1)}%</span>
             </div>
             <div className="usage-bar">
-              <div className="usage-fill" style={{ width: `${Math.min((usage.today / usage.limit) * 100, 100)}%` }}></div>
+              <div 
+                className="usage-fill" 
+                style={{ width: `${Math.min((usage.today / usage.limit) * 100, 100)}%` }}
+              ></div>
             </div>
-            <div className="usage-details">
-              {usage.today.toLocaleString()} / {usage.limit.toLocaleString()} calls
+            <div className="usage-text">
+              {usage.today.toLocaleString()} / {usage.limit.toLocaleString()}
             </div>
           </div>
-          
-          <button onClick={logout} className="btn btn-ghost btn-full" data-testid="logout-btn">
-            <LogOut size={18} /> Logout
+
+          <div className="token-card" onClick={copyToken}>
+            <Key size={16} />
+            <span className="token-preview">{userToken.slice(0, 8)}...{userToken.slice(-4)}</span>
+            <Copy size={14} />
+          </div>
+
+          <button className="btn btn-outline btn-full logout-btn" onClick={logout}>
+            <LogOut size={18} />
+            Logout
           </button>
         </div>
       </aside>
 
-      <div className="main-wrapper">
-        <header className="topbar" data-testid="dashboard-topbar">
-          <button className="btn btn-icon mobile-menu" onClick={() => setSidebarOpen(true)} data-testid="mobile-menu-btn">
-            <Menu size={24} />
-          </button>
-          <div className="topbar-title">{navItems.find(n => n.path === location.pathname)?.label || 'Dashboard'}</div>
-          <div className="topbar-token" data-testid="topbar-token">
-            <span>Token:</span>
-            <code>{userToken?.slice(0, 8)}...{userToken?.slice(-4)}</code>
-          </div>
-        </header>
-        
-        <main className="main-content" data-testid="main-content">
-          {children}
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="dashboard-main">
+        {children}
+      </main>
 
+      {/* Overlay for mobile */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>}
     </div>
   )
 }
 
-// Inbox Page
+// ============== INBOX PAGE ==============
 function InboxPage() {
-  const { api, fetchUsage } = useAuth()
+  const { api } = useAuth()
+  const { addToast } = useToast()
   const [emails, setEmails] = useState([])
   const [selectedEmail, setSelectedEmail] = useState(null)
   const [messages, setMessages] = useState([])
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [messagesLoading, setMessagesLoading] = useState(false)
 
-  const fetchEmails = async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true)
+  const fetchEmails = async () => {
     try {
-      const data = await api('/v1/email/list')
+      const data = await api("/v1/email/list")
       setEmails(data.emails || [])
+      if (data.emails?.length > 0 && !selectedEmail) {
+        setSelectedEmail(data.emails[0])
+      }
     } catch (err) {
-      console.error('Fetch emails error:', err)
+      addToast("Failed to load emails", "error")
     }
     setLoading(false)
-    setRefreshing(false)
   }
 
   const fetchMessages = async (emailId) => {
+    setMessagesLoading(true)
     try {
       const data = await api(`/v1/email/${emailId}/messages`)
       setMessages(data.messages || [])
-      await fetchUsage()
     } catch (err) {
-      console.error('Fetch messages error:', err)
+      addToast("Failed to load messages", "error")
     }
+    setMessagesLoading(false)
   }
 
-  const viewMessage = async (msg) => {
+  const fetchFullMessage = async (emailId, messageId) => {
     try {
-      const data = await api(`/v1/email/${selectedEmail.id}/messages/${msg.id}`)
+      const data = await api(`/v1/email/${emailId}/messages/${messageId}`)
       setSelectedMessage(data.message)
-      await fetchUsage()
-      // Update local state to mark as read
-      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m))
     } catch (err) {
-      console.error('View message error:', err)
+      addToast("Failed to load message", "error")
     }
   }
 
   useEffect(() => {
     fetchEmails()
-    const interval = setInterval(() => fetchEmails(), 30000)
+    const interval = setInterval(fetchEmails, 30000)
     return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
     if (selectedEmail) {
       fetchMessages(selectedEmail.id)
-      const interval = setInterval(() => fetchMessages(selectedEmail.id), 15000)
-      return () => clearInterval(interval)
     }
-  }, [selectedEmail?.id])
+  }, [selectedEmail])
 
-  const totalUnread = emails.reduce((acc, e) => acc + (e.unread_count || 0), 0)
-
-  if (loading) return <div className="page-loading"><div className="loader"></div></div>
+  const copyEmail = (address) => {
+    navigator.clipboard.writeText(address)
+    addToast("Email address copied!", "success")
+  }
 
   return (
-    <div className="inbox-page" data-testid="inbox-page">
-      <div className="inbox-header">
-        <h2><Inbox size={24} /> Inbox {totalUnread > 0 && <span className="badge">{totalUnread}</span>}</h2>
-        <button onClick={() => fetchEmails(true)} className="btn btn-secondary" disabled={refreshing} data-testid="refresh-inbox-btn">
-          <RefreshCw size={16} className={refreshing ? 'spinning' : ''} /> Refresh
+    <div className="inbox-page">
+      <div className="page-header">
+        <h1>Inbox</h1>
+        <button className="btn btn-outline" onClick={fetchEmails}>
+          <RefreshCw size={18} />
+          Refresh
         </button>
       </div>
 
-      {emails.length === 0 ? (
-        <div className="empty-state" data-testid="no-emails-state">
-          <MailOpen size={64} />
-          <h3>No Email Addresses</h3>
+      {loading ? (
+        <div className="loading-state">
+          <div className="skeleton skeleton-list"></div>
+        </div>
+      ) : emails.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            <Mail size={48} />
+          </div>
+          <h3>No email addresses yet</h3>
           <p>Create your first temporary email address to start receiving messages.</p>
-          <Link to="/emails" className="btn btn-primary" data-testid="create-first-email-btn">
-            <Plus size={18} /> Create Email
+          <Link to="/emails" className="btn btn-primary">
+            <Plus size={18} />
+            Create Email Address
           </Link>
         </div>
       ) : (
         <div className="inbox-layout">
-          <div className="email-selector" data-testid="email-selector">
-            <h4>Select Email</h4>
+          {/* Email Addresses */}
+          <div className="email-list">
+            <div className="list-header">
+              <h3>Your Addresses</h3>
+            </div>
             {emails.map(email => (
-              <button
+              <div 
                 key={email.id}
-                className={`email-option ${selectedEmail?.id === email.id ? 'active' : ''}`}
-                onClick={() => { setSelectedEmail(email); setSelectedMessage(null); }}
-                data-testid={`email-option-${email.id}`}
+                className={`email-item ${selectedEmail?.id === email.id ? "active" : ""}`}
+                onClick={() => {setSelectedEmail(email); setSelectedMessage(null)}}
               >
-                <Mail size={16} />
-                <span className="email-address">{email.address}</span>
-                {email.unread_count > 0 && <span className="unread-badge">{email.unread_count}</span>}
-              </button>
+                <div className="email-info">
+                  <span className="email-address">{email.address}</span>
+                  <span className="email-meta">
+                    {email.unread_count > 0 && (
+                      <span className="unread-badge">{email.unread_count}</span>
+                    )}
+                    {email.message_count} messages
+                  </span>
+                </div>
+                <button className="btn btn-icon" onClick={(e) => {e.stopPropagation(); copyEmail(email.address)}}>
+                  <Copy size={14} />
+                </button>
+              </div>
             ))}
           </div>
 
-          <div className="messages-panel" data-testid="messages-panel">
-            {!selectedEmail ? (
-              <div className="select-email-prompt">
-                <Mail size={48} />
-                <p>Select an email address to view messages</p>
+          {/* Messages */}
+          <div className="messages-list">
+            <div className="list-header">
+              <h3>Messages</h3>
+              {selectedEmail && (
+                <span className="selected-email">{selectedEmail.address}</span>
+              )}
+            </div>
+            {messagesLoading ? (
+              <div className="loading-state">
+                <div className="skeleton skeleton-messages"></div>
               </div>
-            ) : selectedMessage ? (
-              <div className="message-view" data-testid="message-view">
-                <button onClick={() => setSelectedMessage(null)} className="btn btn-ghost" data-testid="back-to-messages-btn">
-                  <ChevronRight className="rotate-180" size={16} /> Back to messages
-                </button>
+            ) : messages.length === 0 ? (
+              <div className="empty-state small">
+                <MailOpen size={32} />
+                <p>No messages yet</p>
+              </div>
+            ) : (
+              messages.map(msg => (
+                <div 
+                  key={msg.id}
+                  className={`message-item ${!msg.is_read ? "unread" : ""} ${selectedMessage?.id === msg.id ? "active" : ""}`}
+                  onClick={() => fetchFullMessage(selectedEmail.id, msg.id)}
+                >
+                  <div className="message-sender">{msg.sender?.split("<")[0] || "Unknown"}</div>
+                  <div className="message-subject">{msg.subject || "(No subject)"}</div>
+                  <div className="message-preview">{msg.body_text?.slice(0, 80) || ""}</div>
+                  <div className="message-time">
+                    {new Date(msg.received_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Message View */}
+          <div className="message-view">
+            {selectedMessage ? (
+              <>
                 <div className="message-header">
-                  <h3>{selectedMessage.subject || '(No Subject)'}</h3>
-                  <div className="message-meta">
+                  <h2>{selectedMessage.subject || "(No subject)"}</h2>
+                  <div className="message-details">
                     <span><strong>From:</strong> {selectedMessage.sender}</span>
-                    <span><strong>Received:</strong> {new Date(selectedMessage.received_at).toLocaleString()}</span>
+                    <span><strong>Date:</strong> {new Date(selectedMessage.received_at).toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="message-body">
                   {selectedMessage.body_html ? (
-                    <iframe
+                    <iframe 
                       srcDoc={selectedMessage.body_html}
-                      sandbox="allow-same-origin"
                       title="Email content"
-                    />
+                      sandbox="allow-same-origin"
+                    ></iframe>
                   ) : (
-                    <pre>{selectedMessage.body_text || '(No content)'}</pre>
+                    <pre>{selectedMessage.body_text}</pre>
                   )}
                 </div>
-              </div>
-            ) : (
-              <>
-                <div className="messages-header">
-                  <h4>Messages for {selectedEmail.address}</h4>
-                  <span className="message-count">{messages.length} messages</span>
-                </div>
-                {messages.length === 0 ? (
-                  <div className="no-messages" data-testid="no-messages">
-                    <MailOpen size={48} />
-                    <p>No messages yet. Send an email to {selectedEmail.address} to test it!</p>
-                  </div>
-                ) : (
-                  <div className="messages-list" data-testid="messages-list">
-                    {messages.map(msg => (
-                      <div
-                        key={msg.id}
-                        className={`message-item ${!msg.is_read ? 'unread' : ''}`}
-                        onClick={() => viewMessage(msg)}
-                        data-testid={`message-${msg.id}`}
-                      >
-                        <div className="message-sender">{msg.sender}</div>
-                        <div className="message-subject">{msg.subject || '(No Subject)'}</div>
-                        <div className="message-preview">{msg.body_text?.substring(0, 100) || '...'}</div>
-                        <div className="message-time">{new Date(msg.received_at).toLocaleString()}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </>
+            ) : (
+              <div className="empty-state">
+                <Eye size={32} />
+                <p>Select a message to view</p>
+              </div>
             )}
           </div>
         </div>
@@ -616,25 +918,22 @@ function InboxPage() {
   )
 }
 
-// My Emails Page
+// ============== EMAILS PAGE ==============
 function EmailsPage() {
-  const { api, fetchUsage } = useAuth()
+  const { api } = useAuth()
+  const { addToast } = useToast()
   const [emails, setEmails] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showCreate, setShowCreate] = useState(false)
-  const [createType, setCreateType] = useState('random')
-  const [customName, setCustomName] = useState('')
-  const [subdomain, setSubdomain] = useState('temp')
   const [creating, setCreating] = useState(false)
-  const [error, setError] = useState('')
-  const [copied, setCopied] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [newEmail, setNewEmail] = useState({ type: "random", name: "", subdomain: "temp" })
 
   const fetchEmails = async () => {
     try {
-      const data = await api('/v1/email/list')
+      const data = await api("/v1/email/list")
       setEmails(data.emails || [])
     } catch (err) {
-      console.error('Fetch emails error:', err)
+      addToast("Failed to load emails", "error")
     }
     setLoading(false)
   }
@@ -645,78 +944,83 @@ function EmailsPage() {
 
   const createEmail = async () => {
     setCreating(true)
-    setError('')
     try {
-      const body = { type: createType, subdomain }
-      if (createType === 'custom') body.name = customName
-      await api('/v1/email/create', { method: 'POST', body: JSON.stringify(body) })
-      setShowCreate(false)
-      setCustomName('')
+      const payload = { type: newEmail.type, subdomain: newEmail.subdomain }
+      if (newEmail.type === "custom") payload.name = newEmail.name
+      await api("/v1/email/create", { method: "POST", body: JSON.stringify(payload) })
+      addToast("Email address created!", "success")
+      setShowModal(false)
+      setNewEmail({ type: "random", name: "", subdomain: "temp" })
       fetchEmails()
-      await fetchUsage()
     } catch (err) {
-      setError(err.message)
+      addToast(err.message, "error")
     }
     setCreating(false)
   }
 
   const deleteEmail = async (id) => {
-    if (!confirm('Are you sure you want to delete this email address? All messages will be lost.')) return
+    if (!confirm("Delete this email address?")) return
     try {
-      await api(`/v1/email/${id}`, { method: 'DELETE' })
+      await api(`/v1/email/${id}`, { method: "DELETE" })
+      addToast("Email deleted", "success")
       fetchEmails()
-      await fetchUsage()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, "error")
     }
   }
 
-  const copyAddress = (address, id) => {
+  const copyEmail = (address) => {
     navigator.clipboard.writeText(address)
-    setCopied(id)
-    setTimeout(() => setCopied(null), 2000)
+    addToast("Copied!", "success")
   }
 
-  if (loading) return <div className="page-loading"><div className="loader"></div></div>
-
   return (
-    <div className="emails-page" data-testid="emails-page">
+    <div className="emails-page">
       <div className="page-header">
-        <h2><Mail size={24} /> My Email Addresses</h2>
-        <button onClick={() => setShowCreate(true)} className="btn btn-primary" data-testid="create-email-btn">
-          <Plus size={18} /> Create Email
+        <h1>Email Addresses</h1>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <Plus size={18} />
+          Create New
         </button>
       </div>
 
-      {emails.length === 0 ? (
-        <div className="empty-state" data-testid="no-emails-empty">
-          <Mail size={64} />
-          <h3>No Email Addresses Yet</h3>
-          <p>Create your first temporary email address to start receiving messages.</p>
-          <button onClick={() => setShowCreate(true)} className="btn btn-primary btn-lg">
-            <Plus size={18} /> Create Your First Email
+      {loading ? (
+        <div className="loading-state">
+          <div className="skeleton skeleton-grid"></div>
+        </div>
+      ) : emails.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            <Mail size={48} />
+          </div>
+          <h3>No email addresses</h3>
+          <p>Create your first temporary email to get started</p>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={18} />
+            Create Email
           </button>
         </div>
       ) : (
-        <div className="emails-grid" data-testid="emails-grid">
+        <div className="emails-grid">
           {emails.map(email => (
-            <div key={email.id} className="email-card" data-testid={`email-card-${email.id}`}>
+            <div key={email.id} className="email-card">
               <div className="email-card-header">
-                <span className={`subdomain-badge ${email.subdomain}`}>{email.subdomain}</span>
-                {email.unread_count > 0 && <span className="unread-badge">{email.unread_count} new</span>}
+                <Mail size={20} />
+                <span className={`domain-badge ${email.subdomain}`}>{email.subdomain}</span>
               </div>
-              <div className="email-card-address" title={email.address}>{email.address}</div>
-              <div className="email-card-stats">
-                <span>{email.message_count || 0} messages</span>
-                <span>Expires: {new Date(email.expires_at).toLocaleDateString()}</span>
+              <div className="email-card-body">
+                <span className="email-address">{email.address}</span>
+                <div className="email-stats">
+                  <span><Inbox size={14} /> {email.message_count} msgs</span>
+                  <span><Clock size={14} /> {new Date(email.expires_at).toLocaleDateString()}</span>
+                </div>
               </div>
               <div className="email-card-actions">
-                <button onClick={() => copyAddress(email.address, email.id)} className="btn btn-secondary btn-sm" data-testid={`copy-email-${email.id}`}>
-                  {copied === email.id ? <Check size={14} /> : <Copy size={14} />}
-                  {copied === email.id ? 'Copied!' : 'Copy'}
+                <button className="btn btn-outline btn-sm" onClick={() => copyEmail(email.address)}>
+                  <Copy size={14} /> Copy
                 </button>
-                <button onClick={() => deleteEmail(email.id)} className="btn btn-danger btn-sm" data-testid={`delete-email-${email.id}`}>
-                  <Trash2 size={14} /> Delete
+                <button className="btn btn-danger btn-sm" onClick={() => deleteEmail(email.id)}>
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>
@@ -724,62 +1028,81 @@ function EmailsPage() {
         </div>
       )}
 
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} data-testid="create-email-modal">
-            <h3>Create New Email Address</h3>
-            
-            {error && <div className="alert alert-error">{error}</div>}
-
-            <div className="form-group">
-              <label>Email Type</label>
-              <div className="toggle-group">
-                <button className={`toggle-btn ${createType === 'random' ? 'active' : ''}`} onClick={() => setCreateType('random')} data-testid="type-random-btn">
-                  Random
-                </button>
-                <button className={`toggle-btn ${createType === 'custom' ? 'active' : ''}`} onClick={() => setCreateType('custom')} data-testid="type-custom-btn">
-                  Custom
-                </button>
-              </div>
+      {/* Create Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Create Email Address</h2>
+              <button className="btn btn-icon" onClick={() => setShowModal(false)}>
+                <X size={20} />
+              </button>
             </div>
-
-            {createType === 'custom' && (
+            <div className="modal-body">
               <div className="form-group">
-                <label>Email Name</label>
-                <input
-                  type="text"
-                  value={customName}
-                  onChange={e => setCustomName(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
-                  placeholder="yourname"
-                  className="input"
-                  data-testid="custom-name-input"
-                />
+                <label>Type</label>
+                <div className="toggle-group">
+                  <button 
+                    className={`toggle-btn ${newEmail.type === "random" ? "active" : ""}`}
+                    onClick={() => setNewEmail({...newEmail, type: "random"})}
+                  >
+                    Random
+                  </button>
+                  <button 
+                    className={`toggle-btn ${newEmail.type === "custom" ? "active" : ""}`}
+                    onClick={() => setNewEmail({...newEmail, type: "custom"})}
+                  >
+                    Custom
+                  </button>
+                </div>
               </div>
-            )}
 
-            <div className="form-group">
-              <label>Domain</label>
-              <select value={subdomain} onChange={e => setSubdomain(e.target.value)} className="input select" data-testid="subdomain-select">
-                <option value="temp">temp.amitbrand.shop</option>
-                <option value="soul">soul.amitbrand.shop</option>
-                <option value="crack">crack.amitbrand.shop</option>
-              </select>
+              {newEmail.type === "custom" && (
+                <div className="form-group">
+                  <label>Email Name</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="myemail"
+                    value={newEmail.name}
+                    onChange={e => setNewEmail({...newEmail, name: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "")})}
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Domain</label>
+                <div className="domain-select">
+                  {["temp", "soul", "crack"].map(d => (
+                    <button
+                      key={d}
+                      className={`domain-btn ${newEmail.subdomain === d ? "active" : ""}`}
+                      onClick={() => setNewEmail({...newEmail, subdomain: d})}
+                    >
+                      @{d}.amitbrand.shop
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="preview-box">
+                <span className="preview-label">Preview:</span>
+                <code>
+                  {newEmail.type === "custom" && newEmail.name 
+                    ? `${newEmail.name}@${newEmail.subdomain}.amitbrand.shop`
+                    : `<random>@${newEmail.subdomain}.amitbrand.shop`
+                  }
+                </code>
+              </div>
             </div>
-
-            <div className="preview-box">
-              <span>Preview:</span>
-              <code>{createType === 'custom' ? (customName || 'yourname') : '[random]'}@{subdomain}.amitbrand.shop</code>
-            </div>
-
-            <div className="modal-actions">
-              <button onClick={() => setShowCreate(false)} className="btn btn-ghost" data-testid="cancel-create-btn">Cancel</button>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
               <button 
-                onClick={createEmail} 
                 className="btn btn-primary" 
-                disabled={creating || (createType === 'custom' && !customName)}
-                data-testid="confirm-create-btn"
+                onClick={createEmail}
+                disabled={creating || (newEmail.type === "custom" && !newEmail.name)}
               >
-                {creating ? 'Creating...' : 'Create Email (5 tokens)'}
+                {creating ? "Creating..." : "Create Email"}
               </button>
             </div>
           </div>
@@ -789,727 +1112,546 @@ function EmailsPage() {
   )
 }
 
-// Token Info Page
-function TokenPage() {
-  const { userToken, usage, fetchUsage } = useAuth()
-  const [copied, setCopied] = useState(false)
+// ============== SEND MAIL PAGE ==============
+function SendMailPage() {
+  const { api } = useAuth()
+  const { addToast } = useToast()
+  const [emails, setEmails] = useState([])
+  const [form, setForm] = useState({ emailId: "", to: "", subject: "", body: "" })
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    fetchUsage()
+    api("/v1/email/list").then(data => setEmails(data.emails || [])).catch(() => {})
   }, [])
 
-  const copyToken = () => {
-    navigator.clipboard.writeText(userToken)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const downloadToken = () => {
-    const content = `Temp Amit Brands - Your Token
-=============================
-Token: ${userToken}
-
-IMPORTANT: Keep this token safe!
-
-Generated: ${new Date().toISOString()}`
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'temp-amit-brands-token.txt'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  return (
-    <div className="token-page" data-testid="token-page">
-      <div className="page-header">
-        <h2><Key size={24} /> Token Information</h2>
-      </div>
-
-      <div className="token-section" data-testid="token-display-section">
-        <h3>Your Access Token</h3>
-        <p className="text-muted">This is your unique 40-character token. Keep it safe!</p>
-        
-        <div className="token-display">
-          <code data-testid="full-token">{userToken}</code>
-          <div className="token-actions">
-            <button onClick={copyToken} className="btn btn-secondary" data-testid="copy-full-token-btn">
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-            <button onClick={downloadToken} className="btn btn-secondary" data-testid="download-token-btn">
-              <Download size={16} /> Download
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="usage-section" data-testid="usage-section">
-        <h3>API Usage Statistics</h3>
-        
-        <div className="usage-card">
-          <div className="usage-main">
-            <div className="usage-circle">
-              <svg viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border)" strokeWidth="8" />
-                <circle 
-                  cx="50" cy="50" r="45" 
-                  fill="none" 
-                  stroke="var(--accent)" 
-                  strokeWidth="8" 
-                  strokeDasharray={2 * Math.PI * 45}
-                  strokeDashoffset={2 * Math.PI * 45 * (1 - usage.today / usage.limit)}
-                  strokeLinecap="round"
-                  transform="rotate(-90 50 50)"
-                />
-              </svg>
-              <div className="usage-percent">{((usage.today / usage.limit) * 100).toFixed(1)}%</div>
-            </div>
-            <div className="usage-info">
-              <div className="usage-stat">
-                <span className="label">Used Today</span>
-                <span className="value">{usage.today.toLocaleString()}</span>
-              </div>
-              <div className="usage-stat">
-                <span className="label">Daily Limit</span>
-                <span className="value">{usage.limit.toLocaleString()}</span>
-              </div>
-              <div className="usage-stat">
-                <span className="label">Remaining</span>
-                <span className="value">{(usage.limit - usage.today).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="cost-table" data-testid="cost-table">
-          <h4>API Token Costs</h4>
-          <table>
-            <thead>
-              <tr><th>Action</th><th>Tokens</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Create Email</td><td>5</td></tr>
-              <tr><td>Delete Email</td><td>2</td></tr>
-              <tr><td>Get Messages</td><td>3</td></tr>
-              <tr><td>Read Message</td><td>1</td></tr>
-              <tr><td>List Emails</td><td className="free">FREE</td></tr>
-              <tr><td>Check Usage</td><td className="free">FREE</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Settings Page
-function SettingsPage() {
-  const { logout, userToken } = useAuth()
-  const [showConfirm, setShowConfirm] = useState(false)
-
-  const clearAllData = () => {
-    localStorage.clear()
-    logout()
-  }
-
-  return (
-    <div className="settings-page" data-testid="settings-page">
-      <div className="page-header">
-        <h2><Settings size={24} /> Settings</h2>
-      </div>
-
-      <div className="settings-section">
-        <h3>Account</h3>
-        <div className="setting-item">
-          <div className="setting-info">
-            <h4>Export Token</h4>
-            <p>Download your token as a text file for backup</p>
-          </div>
-          <button onClick={() => {
-            const content = `Token: ${userToken}`;
-            const blob = new Blob([content], { type: 'text/plain' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'token-backup.txt'
-            a.click()
-          }} className="btn btn-secondary" data-testid="export-token-btn">
-            <Download size={16} /> Export
-          </button>
-        </div>
-      </div>
-
-      <div className="settings-section danger">
-        <h3>Danger Zone</h3>
-        <div className="setting-item">
-          <div className="setting-info">
-            <h4>Clear Local Data</h4>
-            <p>This will log you out and clear all cached data. Your emails will not be affected.</p>
-          </div>
-          <button onClick={() => setShowConfirm(true)} className="btn btn-danger" data-testid="clear-data-btn">
-            Clear Data
-          </button>
-        </div>
-      </div>
-
-      {showConfirm && (
-        <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
-          <div className="modal modal-sm" onClick={e => e.stopPropagation()} data-testid="confirm-clear-modal">
-            <h3>Clear Local Data?</h3>
-            <p>You will be logged out. Make sure you have saved your token!</p>
-            <div className="modal-actions">
-              <button onClick={() => setShowConfirm(false)} className="btn btn-ghost">Cancel</button>
-              <button onClick={clearAllData} className="btn btn-danger" data-testid="confirm-clear-btn">Clear & Logout</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Main App
-
-// ---------------- Send Mail Page ----------------
-function SendMailPage() {
-  const { api, fetchUsage } = useAuth()
-  const [emails, setEmails] = useState([])
-  const [fromId, setFromId] = useState('')
-  const [to, setTo] = useState('')
-  const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await api('/v1/email/list')
-        setEmails(data.emails || [])
-        if (data.emails && data.emails.length && !fromId) setFromId(String(data.emails[0].id))
-      } catch (e) { setError(e.message) }
-    })()
-  }, [api])
-
-  const askConfirm = (e) => {
+  const sendMail = async (e) => {
     e.preventDefault()
-    setError('')
-    if (!fromId) { setError('Select a sender email'); return }
-    if (!to || !subject || !body) { setError('All fields required'); return }
-    setShowConfirm(true)
-  }
-
-  const doSend = async () => {
-    setSending(true)
-    setError('')
-    try {
-      const data = await api('/v1/mail/send', {
-        method: 'POST',
-        body: JSON.stringify({ emailId: parseInt(fromId), to, subject, body })
-      })
-      setResult(data)
-      setSubject(''); setBody(''); setTo('')
-      fetchUsage()
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setSending(false)
-      setShowConfirm(false)
+    if (!form.emailId || !form.to || !form.subject || !form.body) {
+      addToast("Please fill all fields", "error")
+      return
     }
+    setSending(true)
+    try {
+      await api("/v1/mail/send", { method: "POST", body: JSON.stringify(form) })
+      addToast("Email sent successfully!", "success")
+      setForm({ emailId: form.emailId, to: "", subject: "", body: "" })
+    } catch (err) {
+      addToast(err.message, "error")
+    }
+    setSending(false)
   }
-
-  const senderAddr = emails.find(e => String(e.id) === String(fromId))?.address || ''
 
   return (
-    <div className="page-container" data-testid="send-mail-page">
+    <div className="send-page">
       <div className="page-header">
-        <h1>Send Mail</h1>
-        <p className="page-subtitle">Send outbound email from your temporary addresses (5 tokens / send)</p>
+        <h1>Compose Email</h1>
       </div>
 
-      {result && (
-        <div className="alert alert-success" data-testid="send-success">
-          <Check size={18} />
-          <div>
-            <strong>Email sent!</strong><br/>
-            From: {result.from} → To: {result.to}<br/>
-            <small>Accepted by: {(result.accepted || []).join(', ') || 'recipient server'}</small>
+      <div className="compose-card">
+        <form onSubmit={sendMail}>
+          <div className="form-group">
+            <label>From</label>
+            <select 
+              className="input" 
+              value={form.emailId} 
+              onChange={e => setForm({...form, emailId: e.target.value})}
+            >
+              <option value="">Select sender address</option>
+              {emails.map(e => <option key={e.id} value={e.id}>{e.address}</option>)}
+            </select>
           </div>
-          <button onClick={() => setResult(null)} className="btn btn-icon"><X size={16}/></button>
-        </div>
-      )}
-      {error && (
-        <div className="alert alert-error" data-testid="send-error">
-          <AlertCircle size={18}/>{error}
-          <button onClick={() => setError('')} className="btn btn-icon"><X size={16}/></button>
-        </div>
-      )}
 
-      <form className="form-card" onSubmit={askConfirm} data-testid="send-mail-form">
-        <div className="form-group">
-          <label>From (your temp email)</label>
-          <select value={fromId} onChange={e => setFromId(e.target.value)} className="input" data-testid="send-from-select" required>
-            <option value="">-- Select sender --</option>
-            {emails.map(e => <option key={e.id} value={e.id}>{e.address}</option>)}
-          </select>
-          {emails.length === 0 && <small style={{color:'#94a3b8'}}>You have no temp emails. <Link to="/emails">Create one first</Link>.</small>}
-        </div>
-        <div className="form-group">
-          <label>To</label>
-          <input type="email" value={to} onChange={e => setTo(e.target.value)} placeholder="recipient@gmail.com" className="input" data-testid="send-to-input" required/>
-        </div>
-        <div className="form-group">
-          <label>Subject</label>
-          <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject" className="input" data-testid="send-subject-input" required/>
-        </div>
-        <div className="form-group">
-          <label>Body</label>
-          <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Your message..." className="input" rows={8} data-testid="send-body-input" required/>
-        </div>
-        <button type="submit" className="btn btn-primary" disabled={sending || emails.length === 0} data-testid="send-mail-btn">
-          <Send size={18}/> Send Email (5 tokens)
-        </button>
-      </form>
-
-      {showConfirm && (
-        <div className="modal-overlay" data-testid="send-confirm-modal">
-          <div className="modal">
-            <h3>Confirm send?</h3>
-            <p>You are about to send an email:</p>
-            <div className="confirm-details">
-              <div><strong>From:</strong> {senderAddr}</div>
-              <div><strong>To:</strong> {to}</div>
-              <div><strong>Subject:</strong> {subject}</div>
-            </div>
-            <p style={{color:'#fbbf24',fontSize:'0.85rem'}}>This will consume 5 tokens. The email will be DKIM-signed and delivered directly to recipient's MX.</p>
-            <div className="modal-actions">
-              <button onClick={() => setShowConfirm(false)} className="btn btn-ghost" disabled={sending} data-testid="send-cancel-btn">Cancel</button>
-              <button onClick={doSend} className="btn btn-primary" disabled={sending} data-testid="send-confirm-btn">
-                {sending ? <><RefreshCw size={16} className="spin"/> Sending...</> : <>Confirm & Send</>}
-              </button>
-            </div>
+          <div className="form-group">
+            <label>To</label>
+            <input
+              type="email"
+              className="input"
+              placeholder="recipient@example.com"
+              value={form.to}
+              onChange={e => setForm({...form, to: e.target.value})}
+            />
           </div>
-        </div>
-      )}
+
+          <div className="form-group">
+            <label>Subject</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="Email subject"
+              value={form.subject}
+              onChange={e => setForm({...form, subject: e.target.value})}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Message</label>
+            <textarea
+              className="input textarea"
+              placeholder="Write your message..."
+              rows={10}
+              value={form.body}
+              onChange={e => setForm({...form, body: e.target.value})}
+            ></textarea>
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-lg" disabled={sending}>
+            {sending ? (
+              <>
+                <span className="spinner"></span>
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send size={18} />
+                Send Email
+              </>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
 
-// ---------------- API Keys Page ----------------
+// ============== API KEYS PAGE ==============
 function ApiKeysPage() {
   const { api } = useAuth()
+  const { addToast } = useToast()
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
   const [newKey, setNewKey] = useState(null)
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [creating, setCreating] = useState(false)
 
-  const load = async () => {
-    setLoading(true)
+  const fetchKeys = async () => {
     try {
-      const data = await api('/v1/keys')
+      const data = await api("/v1/keys")
       setKeys(data.keys || [])
-    } catch (e) { setError(e.message) }
+    } catch (err) {
+      addToast("Failed to load keys", "error")
+    }
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    fetchKeys()
+  }, [])
 
-  const createKey = async (e) => {
-    e.preventDefault()
-    setError('')
+  const createKey = async () => {
     setCreating(true)
     try {
-      const data = await api('/v1/keys/create', { method: 'POST', body: JSON.stringify({ name: name || 'Default Key' }) })
+      const data = await api("/v1/keys/create", { method: "POST", body: JSON.stringify({ name: "API Key" }) })
       setNewKey(data.api_key)
-      setName('')
-      load()
-    } catch (e) { setError(e.message) }
+      addToast("API key created!", "success")
+      fetchKeys()
+    } catch (err) {
+      addToast(err.message, "error")
+    }
     setCreating(false)
   }
 
   const deleteKey = async (id) => {
-    if (!confirm('Revoke this API key permanently?')) return
+    if (!confirm("Delete this API key?")) return
     try {
-      await api('/v1/keys/' + id, { method: 'DELETE' })
-      load()
-    } catch (e) { setError(e.message) }
+      await api(`/v1/keys/${id}`, { method: "DELETE" })
+      addToast("Key deleted", "success")
+      fetchKeys()
+    } catch (err) {
+      addToast(err.message, "error")
+    }
   }
 
-  const copyKey = () => {
-    navigator.clipboard.writeText(newKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyKey = (key) => {
+    navigator.clipboard.writeText(key)
+    addToast("Copied!", "success")
   }
 
   return (
-    <div className="page-container" data-testid="api-keys-page">
+    <div className="keys-page">
       <div className="page-header">
-        <h1>API Access Keys</h1>
-        <p className="page-subtitle">Use API keys with <code>X-API-Key</code> header for programmatic access. Only 1 active key at a time.</p>
+        <h1>API Keys</h1>
+        <button className="btn btn-primary" onClick={createKey} disabled={creating}>
+          <Plus size={18} />
+          {creating ? "Creating..." : "Create Key"}
+        </button>
       </div>
-
-      {error && <div className="alert alert-error" data-testid="keys-error"><AlertCircle size={18}/>{error}</div>}
 
       {newKey && (
-        <div className="alert alert-success" data-testid="new-key-display" style={{flexDirection:'column',alignItems:'flex-start'}}>
-          <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}><Check size={18}/><strong>Save this key now — it will not be shown again!</strong></div>
-          <code style={{background:'#0f172a',padding:'10px 14px',borderRadius:6,wordBreak:'break-all',width:'100%',color:'#a5b4fc'}}>{newKey}</code>
-          <div style={{marginTop:10,display:'flex',gap:8}}>
-            <button onClick={copyKey} className="btn btn-primary" data-testid="copy-new-key-btn">
-              {copied ? <><Check size={16}/> Copied</> : <><Copy size={16}/> Copy</>}
+        <div className="alert alert-success new-key-alert">
+          <div>
+            <strong>New API Key Created!</strong>
+            <p>Save this key now - you wont see it again.</p>
+            <code>{newKey}</code>
+          </div>
+          <div className="alert-actions">
+            <button className="btn btn-outline btn-sm" onClick={() => copyKey(newKey)}>
+              <Copy size={14} /> Copy
             </button>
-            <button onClick={() => setNewKey(null)} className="btn btn-ghost" data-testid="dismiss-new-key-btn">I've saved it</button>
+            <button className="btn btn-icon" onClick={() => setNewKey(null)}>
+              <X size={18} />
+            </button>
           </div>
         </div>
       )}
 
-      {keys.length === 0 ? (
-        <form onSubmit={createKey} className="form-card" data-testid="create-key-form">
-          <div className="form-group">
-            <label>Key Name (optional)</label>
-            <input value={name} onChange={e=>setName(e.target.value)} placeholder="My Production Key" className="input" data-testid="key-name-input"/>
-          </div>
-          <button type="submit" disabled={creating} className="btn btn-primary" data-testid="create-key-btn">
-            {creating ? <><RefreshCw size={16} className="spin"/> Creating...</> : <><Plus size={16}/> Create Access Key</>}
+      {loading ? (
+        <div className="loading-state">
+          <div className="skeleton skeleton-list"></div>
+        </div>
+      ) : keys.length === 0 ? (
+        <div className="empty-state">
+          <Key size={48} />
+          <h3>No API keys</h3>
+          <p>Create an API key to use programmatic access</p>
+          <button className="btn btn-primary" onClick={createKey}>
+            <Plus size={18} />
+            Create Key
           </button>
-        </form>
+        </div>
       ) : (
-        <div className="card" data-testid="keys-list">
-          {keys.map(k => (
-            <div key={k.id} className="key-row" data-testid={`key-${k.id}`}>
-              <div>
-                <div><strong>{k.name}</strong></div>
-                <code style={{color:'#94a3b8',fontSize:'0.85rem'}}>{k.key_prefix}...</code>
-                <div style={{fontSize:'0.8rem',color:'#64748b',marginTop:4}}>
-                  Created {new Date(k.created_at).toLocaleString()}
-                  {k.last_used_at && ' · Last used ' + new Date(k.last_used_at).toLocaleString()}
-                </div>
+        <div className="keys-list">
+          {keys.map(key => (
+            <div key={key.id} className="key-card">
+              <div className="key-info">
+                <span className="key-name">{key.name}</span>
+                <code className="key-prefix">{key.key_prefix}...</code>
+                <span className="key-meta">
+                  Created: {new Date(key.created_at).toLocaleDateString()}
+                  {key.last_used_at && ` • Last used: ${new Date(key.last_used_at).toLocaleDateString()}`}
+                </span>
               </div>
-              <button onClick={() => deleteKey(k.id)} className="btn btn-danger" data-testid={`delete-key-${k.id}`}>
-                <Trash2 size={16}/> Revoke
-              </button>
+              <div className="key-actions">
+                <button className="btn btn-danger btn-sm" onClick={() => deleteKey(key.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
-          <p style={{marginTop:16,color:'#94a3b8',fontSize:'0.85rem'}}>To create a new key, revoke the existing one first.</p>
         </div>
       )}
     </div>
   )
 }
 
-// ---------------- API Docs Page ----------------
-function ApiDocsPage() {
-  const { api, userToken } = useAuth()
-  const [endpoints, setEndpoints] = useState([])
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [baseUrl, setBaseUrl] = useState('')
-  const [copied, setCopied] = useState('')
-
-  useEffect(() => {
-    (async () => {
-      try {
-        // public endpoint, doesn't need auth
-        const docsRes = await fetch(API_URL + '/v1/docs/endpoints')
-        const docs = await docsRes.json()
-        setEndpoints(docs.endpoints || [])
-        setBaseUrl(docs.base_url || window.location.origin)
-        const keysData = await api('/v1/keys')
-        setKeys(keysData.keys || [])
-      } catch (e) {
-        // ignore
-      }
-      setLoading(false)
-    })()
-  }, [api])
-
-  const sampleKey = keys.length > 0 ? 'YOUR_API_KEY' : 'mtak_xxxxx_create_a_key_in_API_Keys_tab'
-
-  const copyExample = (text, id) => {
-    navigator.clipboard.writeText(text)
-    setCopied(id)
-    setTimeout(() => setCopied(''), 1500)
-  }
-
-  return (
-    <div className="page-container" data-testid="api-docs-page">
-      <div className="page-header">
-        <h1>API Documentation</h1>
-        <p className="page-subtitle">All available endpoints. Authenticate with <code>X-API-Key: &lt;your_key&gt;</code> header.</p>
-      </div>
-
-      <div className="card" style={{marginBottom:20}}>
-        <h3 style={{marginTop:0}}><Globe size={18} style={{verticalAlign:'middle'}}/> Base URL</h3>
-        <code style={{background:'#0f172a',padding:'10px 14px',borderRadius:6,display:'block',color:'#a5b4fc'}}>{baseUrl}</code>
-        <p style={{color:'#94a3b8',fontSize:'0.85rem',marginTop:10}}>
-          Auth header: <code>X-API-Key: {sampleKey}</code>
-          {keys.length === 0 && <span style={{color:'#fbbf24'}}> · No active API key — <Link to="/keys">create one</Link>.</span>}
-        </p>
-      </div>
-
-      {loading ? <div className="loading">Loading endpoints...</div> : (
-        <div className="endpoints-grid" data-testid="endpoints-list">
-          {endpoints.map((ep, i) => {
-            const cmd = `curl -X ${ep.method} '${baseUrl}${ep.path.replace(':id','1').replace(':msgId','1').replace(':emailId','1').replace(':messageId','1')}' -H 'X-API-Key: ${sampleKey}'${ep.method !== 'GET' && ep.method !== 'DELETE' ? " -H 'Content-Type: application/json' -d '{}'" : ''}`
-            return (
-              <div key={i} className="endpoint-card" data-testid={`endpoint-${i}`}>
-                <div className="endpoint-header">
-                  <span className={`method method-${ep.method.toLowerCase()}`}>{ep.method}</span>
-                  <code className="endpoint-path">{ep.path}</code>
-                  <span className="endpoint-tokens">{ep.tokens === 0 ? 'Free' : ep.tokens + ' tokens'}</span>
-                </div>
-                <p className="endpoint-desc">{ep.desc}</p>
-                <div className="endpoint-auth"><Shield size={12}/> {ep.auth}</div>
-                <div className="endpoint-example">
-                  <code>{cmd}</code>
-                  <button onClick={() => copyExample(cmd, i)} className="btn btn-icon" data-testid={`copy-example-${i}`}>
-                    {copied === i ? <Check size={14}/> : <Copy size={14}/>}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-
+// ============== WEBHOOKS PAGE ==============
 function WebhooksPage() {
   const { api } = useAuth()
+  const { addToast } = useToast()
   const [webhooks, setWebhooks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
-  const [newSecret, setNewSecret] = useState(null)
-  const [form, setForm] = useState({ url: "", events: ["message.received"] })
-  const [error, setError] = useState("")
-  const [testing, setTesting] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [newWebhook, setNewWebhook] = useState({ url: "", events: ["message.received"] })
 
-  const EVENTS = [
-    { id: "message.received", label: "Message Received" },
-    { id: "email.created", label: "Email Created" },
-    { id: "email.deleted", label: "Email Deleted" },
-  ]
-
-  const load = async () => {
-    setLoading(true)
+  const fetchWebhooks = async () => {
     try {
       const data = await api("/v1/webhooks")
       setWebhooks(data.webhooks || [])
-    } catch (e) { setError(e.message) }
+    } catch (err) {
+      addToast("Failed to load webhooks", "error")
+    }
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    fetchWebhooks()
+  }, [])
 
-  const createWebhook = async (e) => {
-    e.preventDefault()
-    if (!form.url) return setError("URL required")
-    setCreating(true)
+  const createWebhook = async () => {
     try {
-      const data = await api("/v1/webhooks", { method: "POST", body: JSON.stringify(form) })
-      setNewSecret(data.secret)
-      setForm({ url: "", events: ["message.received"] })
-      setShowCreate(false)
-      load()
-    } catch (e) { setError(e.message) }
-    setCreating(false)
+      await api("/v1/webhooks", { method: "POST", body: JSON.stringify(newWebhook) })
+      addToast("Webhook created!", "success")
+      setShowModal(false)
+      setNewWebhook({ url: "", events: ["message.received"] })
+      fetchWebhooks()
+    } catch (err) {
+      addToast(err.message, "error")
+    }
   }
 
   const deleteWebhook = async (id) => {
-    if (!confirm("Delete?")) return
-    try { await api("/v1/webhooks/" + id, { method: "DELETE" }); load() } catch (e) { setError(e.message) }
+    if (!confirm("Delete this webhook?")) return
+    try {
+      await api(`/v1/webhooks/${id}`, { method: "DELETE" })
+      addToast("Webhook deleted", "success")
+      fetchWebhooks()
+    } catch (err) {
+      addToast(err.message, "error")
+    }
   }
 
   const testWebhook = async (id) => {
-    setTesting(id)
     try {
-      const data = await api("/v1/webhooks/" + id + "/test", { method: "POST" })
-      alert("Test sent! Status: " + data.status_code)
-    } catch (e) { setError(e.message) }
-    setTesting(null)
-    load()
+      const data = await api(`/v1/webhooks/${id}/test`, { method: "POST" })
+      addToast(data.delivered ? "Webhook test successful!" : "Webhook test failed", data.delivered ? "success" : "error")
+    } catch (err) {
+      addToast(err.message, "error")
+    }
   }
 
   return (
-    <div className="page-container" data-testid="webhooks-page">
+    <div className="webhooks-page">
       <div className="page-header">
-        <div>
-          <h1><Webhook size={24}/> Webhooks</h1>
-          <p className="page-subtitle">Receive real-time event notifications.</p>
-        </div>
-        <button onClick={() => setShowCreate(true)} className="btn btn-primary"><Plus size={16}/> New Webhook</button>
+        <h1>Webhooks</h1>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <Plus size={18} />
+          Add Webhook
+        </button>
       </div>
-      {error && <div className="alert alert-error"><AlertCircle size={18}/>{error}</div>}
-      {newSecret && (
-        <div className="alert alert-success" style={{flexDirection:"column",alignItems:"flex-start"}}>
-          <strong>Save this secret for signature verification!</strong>
-          <code style={{background:"#0f172a",padding:12,borderRadius:8,width:"100%",color:"#a5b4fc",marginTop:8}}>{newSecret}</code>
-          <button onClick={() => setNewSecret(null)} className="btn btn-ghost btn-sm" style={{marginTop:8}}>Dismiss</button>
+
+      {loading ? (
+        <div className="loading-state">
+          <div className="skeleton skeleton-list"></div>
         </div>
-      )}
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Create Webhook</h2>
-            <form onSubmit={createWebhook}>
-              <div className="form-group"><label>URL</label><input value={form.url} onChange={e => setForm({...form, url: e.target.value})} placeholder="https://your-server.com/webhook" className="input"/></div>
-              <div className="form-group"><label>Events</label>
-                <div className="scopes-grid">{EVENTS.map(ev => (
-                  <label key={ev.id} className="scope-checkbox">
-                    <input type="checkbox" checked={form.events.includes(ev.id)} onChange={e => setForm({...form, events: e.target.checked ? [...form.events, ev.id] : form.events.filter(x => x !== ev.id)})}/>
-                    <span>{ev.label}</span>
-                  </label>
-                ))}</div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowCreate(false)} className="btn btn-ghost">Cancel</button>
-                <button type="submit" disabled={creating} className="btn btn-primary">{creating ? "Creating..." : "Create"}</button>
-              </div>
-            </form>
-          </div>
+      ) : webhooks.length === 0 ? (
+        <div className="empty-state">
+          <Webhook size={48} />
+          <h3>No webhooks</h3>
+          <p>Add a webhook to receive real-time notifications</p>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={18} />
+            Add Webhook
+          </button>
         </div>
-      )}
-      {loading ? <div className="loading"><RefreshCw className="spin" size={24}/></div> : webhooks.length === 0 ? (
-        <div className="empty-state"><Webhook size={48}/><h3>No Webhooks</h3><p>Create a webhook to receive notifications.</p></div>
       ) : (
         <div className="webhooks-list">
           {webhooks.map(wh => (
-            <div key={wh.id} className="card" style={{marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><code style={{color:"#a5b4fc"}}>{wh.url}</code><span className={"status-badge " + wh.status} style={{marginLeft:8}}>{wh.status}</span></div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={() => testWebhook(wh.id)} disabled={testing === wh.id} className="btn btn-ghost btn-sm">{testing === wh.id ? <RefreshCw size={14} className="spin"/> : <Play size={14}/>} Test</button>
-                  <button onClick={() => deleteWebhook(wh.id)} className="btn btn-danger btn-sm"><Trash2 size={14}/></button>
-                </div>
+            <div key={wh.id} className="webhook-card">
+              <div className="webhook-info">
+                <span className="webhook-url">{wh.url}</span>
+                <span className="webhook-events">{wh.events?.join(", ")}</span>
+                <span className={`webhook-status ${wh.status}`}>{wh.status}</span>
               </div>
-              <div style={{marginTop:8}}>{(wh.events||[]).map(e => <span key={e} className="scope-tag">{e}</span>)}</div>
-              {wh.last_delivery_at && <small style={{color:"#64748b"}}>Last: {new Date(wh.last_delivery_at).toLocaleString()} (HTTP {wh.last_status_code})</small>}
+              <div className="webhook-actions">
+                <button className="btn btn-outline btn-sm" onClick={() => testWebhook(wh.id)}>
+                  <Play size={14} /> Test
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={() => deleteWebhook(wh.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add Webhook</h2>
+              <button className="btn btn-icon" onClick={() => setShowModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Webhook URL</label>
+                <input
+                  type="url"
+                  className="input"
+                  placeholder="https://example.com/webhook"
+                  value={newWebhook.url}
+                  onChange={e => setNewWebhook({...newWebhook, url: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Events</label>
+                <div className="checkbox-group">
+                  {["message.received", "message.read", "email.created", "email.deleted"].map(event => (
+                    <label key={event} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={newWebhook.events.includes(event)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setNewWebhook({...newWebhook, events: [...newWebhook.events, event]})
+                          } else {
+                            setNewWebhook({...newWebhook, events: newWebhook.events.filter(ev => ev !== event)})
+                          }
+                        }}
+                      />
+                      <span>{event}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={createWebhook} disabled={!newWebhook.url}>
+                Create Webhook
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+// ============== ANALYTICS PAGE ==============
 function AnalyticsPage() {
-  const { api } = useAuth()
-  const [range, setRange] = useState("24h")
-  const [usage, setUsage] = useState({ data: [], totals: {} })
-  const [endpoints, setEndpoints] = useState([])
-  const [errors, setErrors] = useState([])
+  const { api, usage } = useAuth()
+  const { addToast } = useToast()
+  const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [range, setRange] = useState("24h")
 
-  const load = async () => {
+  const fetchAnalytics = async () => {
     setLoading(true)
     try {
-      const [u, e, er] = await Promise.all([
-        api("/v1/analytics/usage?range=" + range),
-        api("/v1/analytics/endpoints"),
-        api("/v1/analytics/errors")
-      ])
-      setUsage(u)
-      setEndpoints(e.endpoints || [])
-      setErrors(er.errors || [])
-    } catch (e) {}
+      const data = await api(`/v1/analytics/usage?range=${range}`)
+      setAnalytics(data)
+    } catch (err) {
+      addToast("Failed to load analytics", "error")
+    }
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [range])
-
-  const maxReq = Math.max(...(usage.data||[]).map(d => +d.requests || 0), 1)
+  useEffect(() => {
+    fetchAnalytics()
+  }, [range])
 
   return (
-    <div className="page-container" data-testid="analytics-page">
+    <div className="analytics-page">
       <div className="page-header">
-        <div>
-          <h1><BarChart3 size={24}/> Analytics</h1>
-          <p className="page-subtitle">Monitor your API usage.</p>
-        </div>
+        <h1>Analytics</h1>
         <div className="range-selector">
           {["1h", "24h", "7d", "30d"].map(r => (
-            <button key={r} onClick={() => setRange(r)} className={"btn btn-sm " + (range === r ? "btn-primary" : "btn-ghost")}>{r}</button>
+            <button
+              key={r}
+              className={`btn btn-sm ${range === r ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setRange(r)}
+            >
+              {r}
+            </button>
           ))}
         </div>
       </div>
-      {loading ? <div className="loading"><RefreshCw className="spin" size={24}/></div> : (
-        <>
-          <div className="stats-grid">
-            <div className="stat-card"><Activity size={20}/><div className="stat-value">{(usage.totals?.total_requests||0).toLocaleString()}</div><div className="stat-label">Requests</div></div>
-            <div className="stat-card"><Zap size={20}/><div className="stat-value">{(usage.totals?.total_tokens||0).toLocaleString()}</div><div className="stat-label">Tokens</div></div>
-            <div className="stat-card"><AlertCircle size={20}/><div className="stat-value">{errors.reduce((s,e) => s + (+e.count||0), 0)}</div><div className="stat-label">Errors</div></div>
+
+      <div className="stats-cards">
+        <div className="stat-card">
+          <div className="stat-icon"><Activity size={24} /></div>
+          <div className="stat-content">
+            <span className="stat-value">{usage.today.toLocaleString()}</span>
+            <span className="stat-label">Today Usage</span>
           </div>
-          <div className="card" style={{marginTop:20}}>
-            <h3><Clock size={18}/> Usage Over Time</h3>
-            <div className="simple-chart">
-              {(usage.data||[]).map((d, i) => (
-                <div key={i} className="chart-bar-container">
-                  <div className="chart-bar" style={{height: (d.requests/maxReq*100)+"%"}} title={d.requests + " req"}></div>
-                  <div className="chart-label">{new Date(d.period).toLocaleTimeString([], {hour: "2-digit"})}</div>
-                </div>
-              ))}
-              {(usage.data||[]).length === 0 && <div style={{color:"#64748b",padding:20}}>No data</div>}
-            </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><BarChart3 size={24} /></div>
+          <div className="stat-content">
+            <span className="stat-value">{analytics?.totals?.total_requests || 0}</span>
+            <span className="stat-label">Total Requests ({range})</span>
           </div>
-          <div className="two-col" style={{marginTop:20}}>
-            <div className="card">
-              <h3><Globe size={18}/> Top Endpoints</h3>
-              {endpoints.slice(0,8).map((ep,i) => (
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1e293b"}}>
-                  <code style={{fontSize:"0.8rem"}}>{ep.endpoint}</code>
-                  <span style={{color:"#94a3b8"}}>{(+ep.calls).toLocaleString()}</span>
-                </div>
-              ))}
-              {endpoints.length === 0 && <div style={{color:"#64748b"}}>No data</div>}
-            </div>
-            <div className="card">
-              <h3><AlertCircle size={18}/> Errors</h3>
-              {errors.map((e,i) => (
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1e293b"}}>
-                  <span className={e.status_code >= 500 ? "error-5xx" : "error-4xx"}>HTTP {e.status_code}</span>
-                  <span style={{color:"#94a3b8"}}>{(+e.count).toLocaleString()}</span>
-                </div>
-              ))}
-              {errors.length === 0 && <div style={{color:"#64748b"}}>No errors</div>}
-            </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><Zap size={24} /></div>
+          <div className="stat-content">
+            <span className="stat-value">{analytics?.totals?.total_tokens || 0}</span>
+            <span className="stat-label">Tokens Used ({range})</span>
           </div>
-        </>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="loading-state">
+          <div className="skeleton skeleton-chart"></div>
+        </div>
+      ) : analytics?.data?.length > 0 ? (
+        <div className="chart-card">
+          <h3>Usage Over Time</h3>
+          <div className="simple-chart">
+            {analytics.data.map((point, i) => (
+              <div key={i} className="chart-bar" title={`${point.requests} requests`}>
+                <div 
+                  className="bar-fill"
+                  style={{ height: `${Math.min(100, (parseInt(point.requests) / Math.max(...analytics.data.map(d => parseInt(d.requests)))) * 100)}%` }}
+                ></div>
+                <span className="bar-label">{new Date(point.period).toLocaleTimeString([], {hour: "2-digit"})}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="empty-state">
+          <BarChart3 size={48} />
+          <p>No data for selected period</p>
+        </div>
       )}
     </div>
   )
 }
 
+// ============== API DOCS PAGE ==============
+function ApiDocsPage() {
+  const [endpoints, setEndpoints] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`${API_URL}/v1/docs/endpoints`)
+      .then(r => r.json())
+      .then(data => setEndpoints(data.endpoints || []))
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="docs-page">
+      <div className="page-header">
+        <h1>API Documentation</h1>
+        <a href={`${API_URL}/v1/docs/openapi.json`} className="btn btn-outline" target="_blank" rel="noopener">
+          <Download size={18} />
+          OpenAPI Spec
+        </a>
+      </div>
+
+      <div className="docs-intro">
+        <p>Base URL: <code>https://api.amitbrand.shop/api</code></p>
+        <p>Authentication: Bearer token or X-API-Key header</p>
+      </div>
+
+      {loading ? (
+        <div className="loading-state">
+          <div className="skeleton skeleton-list"></div>
+        </div>
+      ) : (
+        <div className="endpoints-list">
+          {endpoints.map((ep, i) => (
+            <div key={i} className="endpoint-card">
+              <div className="endpoint-header">
+                <span className={`method-badge ${ep.method.toLowerCase()}`}>{ep.method}</span>
+                <code className="endpoint-path">{ep.path}</code>
+                {ep.tokens > 0 && <span className="token-cost">{ep.tokens} tokens</span>}
+              </div>
+              <p className="endpoint-desc">{ep.desc}</p>
+              <span className="endpoint-auth">{ep.auth}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============== MAIN APP ==============
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/inbox" element={<ProtectedRoute><DashboardLayout><InboxPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/emails" element={<ProtectedRoute><DashboardLayout><EmailsPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/token" element={<ProtectedRoute><DashboardLayout><TokenPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/send" element={<ProtectedRoute><DashboardLayout><SendMailPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/keys" element={<ProtectedRoute><DashboardLayout><ApiKeysPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/docs" element={<ProtectedRoute><DashboardLayout><ApiDocsPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/webhooks" element={<ProtectedRoute><DashboardLayout><WebhooksPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><AnalyticsPage /></DashboardLayout></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/inbox" element={<ProtectedRoute><DashboardLayout><InboxPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/emails" element={<ProtectedRoute><DashboardLayout><EmailsPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/send" element={<ProtectedRoute><DashboardLayout><SendMailPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/keys" element={<ProtectedRoute><DashboardLayout><ApiKeysPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/webhooks" element={<ProtectedRoute><DashboardLayout><WebhooksPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><DashboardLayout><AnalyticsPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/docs" element={<ProtectedRoute><DashboardLayout><ApiDocsPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

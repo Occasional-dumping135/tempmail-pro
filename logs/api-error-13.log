@@ -48,3 +48,4 @@
   code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
   help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
 }
+2026-05-16 04:35:54 +00:00: Send mail error: Can't send mail - all recipients were rejected: 550 Invalid recipient domain

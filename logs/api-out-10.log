@@ -271,3 +271,101 @@
 2026-05-15 19:44:36 +00:00: Redis ready
 2026-05-15 19:44:52 +00:00: 104.23.217.9 - - [15/May/2026:19:44:52 +0000] "GET /api/v1/analytics/usage?range=24h HTTP/1.1" 200 156 "-" "curl/7.81.0"
 2026-05-15 19:46:33 +00:00: 162.158.182.192 - - [15/May/2026:19:46:33 +0000] "GET /api/v1/docs/openapi.json HTTP/1.1" 200 5706 "-" "curl/7.81.0"
+2026-05-15 20:00:00 +00:00: Running cleanup job...
+2026-05-15 20:00:00 +00:00: Deleted 0 expired emails
+2026-05-15 20:00:45 +00:00: 172.68.174.7 - - [15/May/2026:20:00:45 +0000] "GET / HTTP/1.1" 404 139 "http://api.amitbrand.shop" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+2026-05-15 20:00:45 +00:00: 172.68.174.7 - - [15/May/2026:20:00:45 +0000] "GET / HTTP/1.1" 404 139 "http://api.amitbrand.shop" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+2026-05-15 20:00:46 +00:00: 172.68.175.114 - - [15/May/2026:20:00:46 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+2026-05-15 20:00:46 +00:00: 172.68.174.7 - - [15/May/2026:20:00:46 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+2026-05-15 20:00:47 +00:00: 104.23.160.167 - - [15/May/2026:20:00:47 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+2026-05-15 20:04:29 +00:00: 162.158.63.237 - - [15/May/2026:20:04:29 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
+2026-05-15 20:23:59 +00:00: 172.69.9.83 - - [15/May/2026:20:23:59 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+2026-05-15 20:24:00 +00:00: 188.114.102.174 - - [15/May/2026:20:24:00 +0000] "GET /assets/js/qr_modal.js HTTP/1.1" 404 160 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+2026-05-15 20:24:03 +00:00: 172.69.68.187 - - [15/May/2026:20:24:03 +0000] "GET /assets/js/message.js HTTP/1.1" 404 159 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+2026-05-15 20:47:15 +00:00: 172.71.28.156 - - [15/May/2026:20:47:15 +0000] "GET /robots.txt HTTP/1.0" 200 197 "-" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)"
+2026-05-15 21:00:00 +00:00: Running cleanup job...
+2026-05-15 21:00:00 +00:00: Deleted 0 expired emails
+2026-05-15 22:00:00 +00:00: Running cleanup job...
+2026-05-15 22:00:00 +00:00: Deleted 0 expired emails
+2026-05-15 22:06:39 +00:00: 104.23.197.222 - - [15/May/2026:22:06:39 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-SearchBot/1.0; +searchbot@anthropic.com)"
+2026-05-15 23:00:00 +00:00: Running cleanup job...
+2026-05-15 23:00:00 +00:00: Deleted 0 expired emails
+2026-05-15 23:24:50 +00:00: 172.71.232.99 - - [15/May/2026:23:24:50 +0000] "GET / HTTP/1.1" 404 139 "-" "req/v3 (https://github.com/imroc/req)"
+2026-05-16 00:00:00 +00:00: Running cleanup job...
+2026-05-16 00:00:00 +00:00: Deleted 0 expired emails
+2026-05-16 00:27:05 +00:00: 104.23.197.111 - - [16/May/2026:00:27:05 +0000] "GET /sitemap.xml HTTP/1.0" 200 988 "-" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-SearchBot/1.0; +searchbot@anthropic.com)"
+2026-05-16 01:00:00 +00:00: Running cleanup job...
+2026-05-16 01:00:00 +00:00: Deleted 0 expired emails
+2026-05-16 01:42:25 +00:00: 172.71.28.156 - - [16/May/2026:01:42:25 +0000] "GET /robots.txt HTTP/1.0" 304 - "-" "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-SearchBot/1.0; +searchbot@anthropic.com)"
+2026-05-16 02:00:00 +00:00: Running cleanup job...
+2026-05-16 02:00:00 +00:00: Deleted 0 expired emails
+2026-05-16 03:00:00 +00:00: Running cleanup job...
+2026-05-16 03:00:00 +00:00: Deleted 0 expired emails
+2026-05-16 03:41:56 +00:00: 172.71.141.140 - - [16/May/2026:03:41:56 +0000] "GET /assets/js/qr_modal.js HTTP/1.1" 404 160 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+2026-05-16 03:41:57 +00:00: 172.71.141.150 - - [16/May/2026:03:41:57 +0000] "GET /static/style/protect/index.js HTTP/1.1" 404 168 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+2026-05-16 03:41:57 +00:00: 172.71.141.32 - - [16/May/2026:03:41:57 +0000] "GET /css/support_parent.css HTTP/1.1" 404 161 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+2026-05-16 04:00:00 +00:00: Running cleanup job...
+2026-05-16 04:00:00 +00:00: Deleted 0 expired emails
+2026-05-16 04:12:51 +00:00: 104.23.216.43 - - [16/May/2026:04:12:51 +0000] "POST /api/v1/auth/login HTTP/1.1" 200 326 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:17:46 +00:00: 104.23.216.42 - - [16/May/2026:04:17:46 +0000] "GET /api/v1/analytics/endpoints HTTP/1.1" 500 44 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:17:49 +00:00: 104.23.216.42 - - [16/May/2026:04:17:49 +0000] "GET /api/v1/analytics/errors HTTP/1.1" 500 41 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:17:50 +00:00: 104.23.216.42 - - [16/May/2026:04:17:50 +0000] "GET /api/v1/analytics/errors HTTP/1.1" 500 41 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:17:55 +00:00: 104.23.216.42 - - [16/May/2026:04:17:55 +0000] "GET /api/v1/keys HTTP/1.1" 200 26 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:18:00 +00:00: 104.23.216.42 - - [16/May/2026:04:18:00 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:18:08 +00:00: 104.23.216.42 - - [16/May/2026:04:18:08 +0000] "GET /api/v1/token/usage HTTP/1.1" 200 135 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:18:10 +00:00: 104.23.216.42 - - [16/May/2026:04:18:10 +0000] "GET /api/v1/email/8/messages/2 HTTP/1.1" 200 295 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:18:17 +00:00: 104.23.216.42 - - [16/May/2026:04:18:17 +0000] "GET /api/v1/email/7/messages HTTP/1.1" 200 580 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:18:19 +00:00: 104.23.216.42 - - [16/May/2026:04:18:19 +0000] "GET /api/v1/email/7/messages/4 HTTP/1.1" 200 269 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:21:11 +00:00: SEO routes mounted
+2026-05-16 04:21:11 +00:00: API v2 routes mounted
+2026-05-16 04:21:11 +00:00: Temp Amit Brands API running on port 3001
+2026-05-16 04:21:11 +00:00: Redis connecting...
+2026-05-16 04:21:11 +00:00: Redis ready
+2026-05-16 04:22:23 +00:00: 104.23.223.8 - - [16/May/2026:04:22:23 +0000] "POST /api/v1/auth/signup HTTP/1.1" 201 211 "-" "curl/7.81.0"
+2026-05-16 04:22:26 +00:00: 104.23.216.42 - - [16/May/2026:04:22:26 +0000] "GET /api/v1/email/10/messages HTTP/1.1" 200 468 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:22:33 +00:00: 172.71.255.81 - - [16/May/2026:04:22:33 +0000] "GET /api/v1/email/list HTTP/1.1" 200 58 "https://temp.amitbrand.shop/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36"
+2026-05-16 04:22:56 +00:00: 104.23.216.42 - - [16/May/2026:04:22:56 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:23:02 +00:00: 172.69.58.40 - - [16/May/2026:04:23:02 +0000] "POST /api/v1/auth/login HTTP/1.1" 200 327 "https://temp.amitbrand.shop/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36"
+2026-05-16 04:23:15 +00:00: 104.23.216.42 - - [16/May/2026:04:23:15 +0000] "GET /api/v1/webhooks HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:23:19 +00:00: 104.23.216.42 - - [16/May/2026:04:23:19 +0000] "GET /api/v1/analytics/usage?range=24h HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:23:23 +00:00: 104.23.216.42 - - [16/May/2026:04:23:23 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:23:35 +00:00: 104.23.216.42 - - [16/May/2026:04:23:35 +0000] "POST /api/v1/mail/send HTTP/1.1" 500 104 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:12 +00:00: 104.23.216.42 - - [16/May/2026:04:24:12 +0000] "DELETE /api/v1/email/10 HTTP/1.1" 200 75 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:17 +00:00: 104.23.216.42 - - [16/May/2026:04:24:17 +0000] "GET /api/v1/email/list HTTP/1.1" 200 58 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:21 +00:00: 104.23.216.42 - - [16/May/2026:04:24:21 +0000] "GET /api/v1/email/list HTTP/1.1" 200 254 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:37 +00:00: 104.23.216.42 - - [16/May/2026:04:24:37 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:40 +00:00: 104.23.216.42 - - [16/May/2026:04:24:40 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:41 +00:00: 104.23.216.42 - - [16/May/2026:04:24:41 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:42 +00:00: 104.23.216.42 - - [16/May/2026:04:24:42 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:43 +00:00: 104.23.216.42 - - [16/May/2026:04:24:43 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:44 +00:00: 104.23.216.42 - - [16/May/2026:04:24:44 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:24:46 +00:00: 104.23.216.42 - - [16/May/2026:04:24:46 +0000] "GET /api/v1/email/14/messages/10 HTTP/1.1" 200 270 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:26:30 +00:00: 104.23.216.42 - - [16/May/2026:04:26:30 +0000] "GET /api/v1/analytics/usage?range=24h HTTP/1.1" 200 300 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:34:35 +00:00: SEO routes mounted
+2026-05-16 04:34:35 +00:00: API v2 routes mounted
+2026-05-16 04:34:35 +00:00: Temp Amit Brands API running on port 3001
+2026-05-16 04:34:35 +00:00: Redis connecting...
+2026-05-16 04:34:35 +00:00: Redis ready
+2026-05-16 04:34:46 +00:00: 104.23.221.130 - - [16/May/2026:04:34:46 +0000] "GET /api/v1/docs/endpoints HTTP/1.1" 200 3150 "-" "curl/7.81.0"
+2026-05-16 04:35:29 +00:00: 104.23.217.8 - - [16/May/2026:04:35:29 +0000] "POST /api/v1/auth/login HTTP/1.1" 200 327 "-" "curl/7.81.0"
+2026-05-16 04:35:34 +00:00: 104.23.216.42 - - [16/May/2026:04:35:34 +0000] "GET /api/v1/analytics/usage?range=1h HTTP/1.1" 200 688 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:35:36 +00:00: 104.23.216.42 - - [16/May/2026:04:35:36 +0000] "GET /api/v1/email/14/messages HTTP/1.1" 200 237 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:36:20 +00:00: 104.23.216.42 - - [16/May/2026:04:36:20 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:36:50 +00:00: 104.23.216.42 - - [16/May/2026:04:36:50 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:37:20 +00:00: 104.23.216.42 - - [16/May/2026:04:37:20 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:37:50 +00:00: 104.23.216.42 - - [16/May/2026:04:37:50 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:38:20 +00:00: 104.23.216.42 - - [16/May/2026:04:38:20 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:38:46 +00:00: SEO routes mounted
+2026-05-16 04:38:46 +00:00: API v2 routes mounted
+2026-05-16 04:38:46 +00:00: Temp Amit Brands API running on port 3001
+2026-05-16 04:38:46 +00:00: Redis connecting...
+2026-05-16 04:38:46 +00:00: Redis ready
+2026-05-16 04:38:50 +00:00: 104.23.216.42 - - [16/May/2026:04:38:50 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:39:00 +00:00: 104.23.216.42 - - [16/May/2026:04:39:00 +0000] "GET /api/v1/email/list HTTP/1.1" 304 - "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:39:03 +00:00: 104.23.216.42 - - [16/May/2026:04:39:03 +0000] "GET /api/v1/analytics/usage?range=24h HTTP/1.1" 200 301 "https://temp.amitbrand.shop/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+2026-05-16 04:40:41 +00:00: SEO routes mounted
+2026-05-16 04:40:41 +00:00: API v2 routes mounted
+2026-05-16 04:40:41 +00:00: Temp Amit Brands API running on port 3001
+2026-05-16 04:40:41 +00:00: Redis connecting...
+2026-05-16 04:40:41 +00:00: Redis ready
+2026-05-16 04:41:12 +00:00: 104.23.221.130 - - [16/May/2026:04:41:12 +0000] "GET /api/v1/analytics/usage?range=24h HTTP/1.1" 200 158 "-" "curl/7.81.0"

@@ -3,9 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
-const dns = require('dns').promises;
 const rateLimit = require('express-rate-limit');
-const net = require('net');
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -33,83 +31,9 @@ const ENDPOINT_CATALOG = [
 ];
 
 function generateAccessKey() {
+  // mtak_ = mail-temp access key, then 36 url-safe chars
   const raw = crypto.randomBytes(27).toString('base64').replace(/[+/=]/g, '').slice(0, 36);
   return 'mtak_' + raw;
-}
-
-// Direct SMTP connection with better error handling and retries
-async function sendDirectMX(fromAddress, toAddress, subject, body, subdomain, dkimKey) {
-  const toDomain = toAddress.split('@')[1];
-  
-  // Resolve MX records
-  let mxRecords;
-  try {
-    mxRecords = await dns.resolveMx(toDomain);
-    mxRecords.sort((a, b) => a.priority - b.priority);
-  } catch (err) {
-    throw new Error('Cannot resolve MX for ' + toDomain + ': ' + err.message);
-  }
-  
-  if (!mxRecords || mxRecords.length === 0) {
-    throw new Error('No MX records found for ' + toDomain);
-  }
-  
-  let lastError = null;
-  
-  // Try each MX server in priority order
-  for (const mx of mxRecords) {
-    const mxHost = mx.exchange;
-    
-    try {
-      const transporter = nodemailer.createTransport({
-        host: mxHost,
-        port: 25,
-        secure: false,
-        tls: {
-          rejectUnauthorized: false,
-          minVersion: 'TLSv1'
-        },
-        name: 'mail.' + subdomain + '.amitbrand.shop',
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 60000,
-        dkim: dkimKey ? {
-          domainName: 'amitbrand.shop',
-          keySelector: 'default',
-          privateKey: dkimKey
-        } : undefined
-      });
-      
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to: toAddress,
-        subject: subject,
-        text: body,
-        headers: {
-          'Message-ID': '<' + crypto.randomBytes(16).toString('hex') + '@' + subdomain + '.amitbrand.shop>',
-          'X-Mailer': 'TempMail Service'
-        },
-        envelope: {
-          from: fromAddress,
-          to: toAddress
-        }
-      });
-      
-      return {
-        success: true,
-        messageId: info.messageId,
-        accepted: info.accepted,
-        rejected: info.rejected,
-        mxHost: mxHost
-      };
-    } catch (err) {
-      console.error('MX ' + mxHost + ' failed: ' + err.message);
-      lastError = err;
-      continue;
-    }
-  }
-  
-  throw lastError || new Error('All MX servers rejected the message');
 }
 
 function mountExtra(app, pool, redisClient) {
@@ -128,30 +52,32 @@ function mountExtra(app, pool, redisClient) {
       try {
         const keyHash = hashToken(apiKey);
         const r = await pool.query(
-          'SELECT id, token_id FROM access_keys WHERE key_hash =  AND is_active = TRUE',
+          'SELECT id, token_id FROM access_keys WHERE key_hash = $1 AND is_active = TRUE',
           [keyHash]
         );
         if (r.rows.length === 0) return res.status(401).json({ error: 'Invalid or revoked API key' });
         req.tokenId = r.rows[0].token_id;
         req.accessKeyId = r.rows[0].id;
-        pool.query('UPDATE access_keys SET last_used_at = NOW() WHERE id = ', [r.rows[0].id]).catch(() => {});
+        pool.query('UPDATE access_keys SET last_used_at = NOW() WHERE id = $1', [r.rows[0].id]).catch(() => {});
         return next();
       } catch (err) {
         console.error('API key auth error:', err);
         return res.status(500).json({ error: 'Auth failed' });
       }
     }
+    // Fall through to the existing authMiddleware on req chain (already attached for these endpoints)
     return next();
   }
 
-  // ---- Rate limit on send endpoint ----
+  // ---- Per-key/IP rate limit on sensitive endpoints ----
   const sendLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 30,
+    max: 30, // 30 sends per minute
     keyGenerator: (req) => req.headers['x-api-key'] || req.tokenId || req.ip,
     message: { error: 'Send rate limit exceeded. Max 30 emails/minute.' }
   });
 
+  // ---- Helper to use BOTH flex auth AND original auth ----
   function dualAuth(originalAuth) {
     return async (req, res, next) => {
       if (req.headers['x-api-key']) return flexAuth(req, res, next);
@@ -159,13 +85,15 @@ function mountExtra(app, pool, redisClient) {
     };
   }
 
+  // ---- Access keys CRUD (session-only) ----
+  // We expect the original authMiddleware to be passed in. We attach via app.locals.
   const sessionAuth = app.locals.authMiddleware;
   const consumeTokens = app.locals.consumeTokens;
 
   app.get('/api/v1/keys', sessionAuth, async (req, res) => {
     try {
       const r = await pool.query(
-        'SELECT id, key_prefix, name, is_active, last_used_at, created_at FROM access_keys WHERE token_id =  ORDER BY created_at DESC',
+        'SELECT id, key_prefix, name, is_active, last_used_at, created_at FROM access_keys WHERE token_id = $1 ORDER BY created_at DESC',
         [req.tokenId]
       );
       res.json({ success: true, keys: r.rows, tokens_consumed: 0 });
@@ -178,7 +106,7 @@ function mountExtra(app, pool, redisClient) {
   app.post('/api/v1/keys/create', sessionAuth, async (req, res) => {
     try {
       const existing = await pool.query(
-        'SELECT COUNT(*)::int as c FROM access_keys WHERE token_id =  AND is_active = TRUE',
+        'SELECT COUNT(*)::int as c FROM access_keys WHERE token_id = $1 AND is_active = TRUE',
         [req.tokenId]
       );
       if (existing.rows[0].c >= 1) {
@@ -189,7 +117,7 @@ function mountExtra(app, pool, redisClient) {
       const keyPrefix = key.slice(0, 12);
       const name = (req.body && req.body.name) ? String(req.body.name).slice(0, 100) : 'Default Key';
       const r = await pool.query(
-        'INSERT INTO access_keys (token_id, key_hash, key_prefix, name) VALUES (, , , ) RETURNING id, key_prefix, name, created_at',
+        'INSERT INTO access_keys (token_id, key_hash, key_prefix, name) VALUES ($1, $2, $3, $4) RETURNING id, key_prefix, name, created_at',
         [req.tokenId, keyHash, keyPrefix, name]
       );
       res.status(201).json({
@@ -209,7 +137,7 @@ function mountExtra(app, pool, redisClient) {
   app.delete('/api/v1/keys/:id', sessionAuth, async (req, res) => {
     try {
       const r = await pool.query(
-        'DELETE FROM access_keys WHERE id =  AND token_id =  RETURNING id',
+        'DELETE FROM access_keys WHERE id = $1 AND token_id = $2 RETURNING id',
         [req.params.id, req.tokenId]
       );
       if (r.rows.length === 0) return res.status(404).json({ error: 'Key not found' });
@@ -220,7 +148,7 @@ function mountExtra(app, pool, redisClient) {
     }
   });
 
-  // ---- Outbound mail with improved error handling ----
+  // ---- Outbound mail (session OR api key) ----
   app.post('/api/v1/mail/send',
     sendLimiter,
     dualAuth(sessionAuth),
@@ -228,83 +156,122 @@ function mountExtra(app, pool, redisClient) {
     consumeTokens,
     async (req, res) => {
       const { emailId, to, subject, body } = req.body || {};
-      
       if (!emailId || !to || !subject || !body) {
         return res.status(400).json({ error: 'emailId, to, subject, body are required' });
       }
-      
-      // Validate email format
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(to)) {
-        return res.status(400).json({ error: 'Invalid recipient email format' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+        return res.status(400).json({ error: 'Invalid recipient email' });
       }
-      
       try {
-        // Get sender email
         const er = await pool.query(
-          'SELECT full_address, subdomain FROM emails WHERE id =  AND token_id =  AND expires_at > NOW()',
+          'SELECT full_address, subdomain FROM emails WHERE id = $1 AND token_id = $2 AND expires_at > NOW()',
           [emailId, req.tokenId]
         );
-        
-        if (er.rows.length === 0) {
-          return res.status(404).json({ error: 'Sender email not found or expired' });
-        }
-        
+        if (er.rows.length === 0) return res.status(404).json({ error: 'Sender email not found or expired' });
         const fromAddress = er.rows[0].full_address;
         const subdomain = er.rows[0].subdomain;
-        
-        // Attempt to send
-        const result = await sendDirectMX(fromAddress, to, subject, body, subdomain, DKIM_PRIVATE_KEY);
-        
-        // Log success
+
+        const transporter = nodemailer.createTransport({
+          host: '127.0.0.1',
+          port: 2525,
+          secure: false,
+          tls: { rejectUnauthorized: false },
+          ignoreTLS: true,
+          name: 'mail.' + subdomain + '.amitbrand.shop',
+          dkim: DKIM_PRIVATE_KEY ? {
+            domainName: 'amitbrand.shop',
+            keySelector: 'default',
+            privateKey: DKIM_PRIVATE_KEY
+          } : undefined
+        });
+
+        // Use direct MX delivery instead of relay since we don't have an outbound MTA
+        const mxTransporter = nodemailer.createTransport({
+          // direct sending: nodemailer will look up MX of recipient
+          // but since this requires DNS, use a public relay approach via "sendmail" fallback
+          // simplest: use Sendmail-less direct MX via "direct-mail" — not built in.
+          // We instead use a dummy stream and log it — production should use a relay.
+          streamTransport: true,
+          newline: 'unix',
+          buffer: true
+        });
+
+        // Best approach: use built-in nodemailer with direct MX
+        const directTransporter = require('nodemailer').createTransport({
+          // Custom SMTP relay through known relays not available; use direct MX
+          host: undefined,
+          port: undefined,
+          // Fallback: spool to outbox table and let user know it's queued
+        });
+
+        // We will actually attempt direct send via MX using a simple resolver
+        const dns = require('dns').promises;
+        const toDomain = to.split('@')[1];
+        let mxHost;
+        try {
+          const mxs = await dns.resolveMx(toDomain);
+          mxs.sort((a, b) => a.priority - b.priority);
+          mxHost = mxs[0]?.exchange;
+        } catch (e) {
+          mxHost = null;
+        }
+
+        if (!mxHost) {
+          await pool.query(
+            'INSERT INTO sent_mails (email_id, token_id, from_address, to_address, subject, body_text, status, error) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+            [emailId, req.tokenId, fromAddress, to, subject, body, 'failed', 'No MX record for ' + toDomain]
+          );
+          return res.status(502).json({ error: 'No MX record found for recipient domain: ' + toDomain });
+        }
+
+        const realTransporter = nodemailer.createTransport({
+          host: mxHost,
+          port: 25,
+          secure: false,
+          tls: { rejectUnauthorized: false },
+          name: 'mail.' + subdomain + '.amitbrand.shop',
+          dkim: DKIM_PRIVATE_KEY ? {
+            domainName: 'amitbrand.shop',
+            keySelector: 'default',
+            privateKey: DKIM_PRIVATE_KEY
+          } : undefined,
+          connectionTimeout: 10000,
+          greetingTimeout: 10000
+        });
+
+        const info = await realTransporter.sendMail({
+          from: fromAddress,
+          to,
+          subject,
+          text: body,
+          envelope: { from: fromAddress, to }
+        });
+
         await pool.query(
-          'INSERT INTO sent_mails (email_id, token_id, from_address, to_address, subject, body_text, status, message_id) VALUES (,,,,,,,)',
-          [emailId, req.tokenId, fromAddress, to, subject, body, 'sent', result.messageId]
+          'INSERT INTO sent_mails (email_id, token_id, from_address, to_address, subject, body_text, status) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+          [emailId, req.tokenId, fromAddress, to, subject, body, 'sent']
         );
-        
+
         res.json({
           success: true,
           message: 'Email sent successfully',
-          messageId: result.messageId,
-          accepted: result.accepted,
-          rejected: result.rejected,
+          messageId: info.messageId,
+          accepted: info.accepted,
+          rejected: info.rejected,
           from: fromAddress,
           to,
-          mxServer: result.mxHost,
-          tokens_consumed: 5,
-          current_usage: req.currentUsage,
-          note: 'Email was sent via direct MX delivery. Delivery depends on recipient server policies and sender reputation.'
-        });
-      } catch (err) {
-        console.error('Send mail error:', err.message);
-        
-        // Log failure
-        try {
-          await pool.query(
-            'INSERT INTO sent_mails (email_id, token_id, from_address, to_address, subject, body_text, status, error) VALUES (,,,,,,,)',
-            [emailId, req.tokenId, 'unknown', to || 'unknown', subject || '', body || '', 'failed', String(err.message || err)]
-          );
-        } catch (e) { /* ignore */ }
-        
-        // Return detailed error
-        let errorMessage = err.message;
-        let suggestion = '';
-        
-        if (errorMessage.includes('550') || errorMessage.includes('rejected')) {
-          suggestion = 'The recipient server rejected the email. This could be due to spam filters, IP reputation, or strict email policies. Try sending to a different email provider or verify your DKIM/SPF/DMARC configuration.';
-        } else if (errorMessage.includes('timeout')) {
-          suggestion = 'Connection timed out. The recipient mail server may be slow or blocking connections.';
-        } else if (errorMessage.includes('MX')) {
-          suggestion = 'Could not find mail server for the recipient domain. Verify the email address is correct.';
-        }
-        
-        res.status(500).json({
-          error: 'Failed to send email: ' + errorMessage,
-          suggestion: suggestion,
-          tip: 'For better deliverability, consider using a professional SMTP relay service like SendGrid, Mailgun, or Amazon SES.',
           tokens_consumed: 5,
           current_usage: req.currentUsage
         });
+      } catch (err) {
+        console.error('Send mail error:', err.message);
+        try {
+          await pool.query(
+            'INSERT INTO sent_mails (email_id, token_id, from_address, to_address, subject, body_text, status, error) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+            [emailId, req.tokenId, 'unknown', to || 'unknown', subject || '', body || '', 'failed', String(err.message || err)]
+          );
+        } catch (e) { /* ignore */ }
+        res.status(500).json({ error: 'Failed to send email: ' + err.message });
       }
     }
   );

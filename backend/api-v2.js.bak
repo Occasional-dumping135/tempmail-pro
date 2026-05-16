@@ -530,7 +530,7 @@ async function sendMailHandler(app, pool, sessionAuth, consumeTokens) {
         });
       } catch (err) {
         console.error("Send mail error:", err.message);
-        const errMsg = err.message; let suggestion = errMsg.includes("550") || errMsg.includes("reject") || errMsg.includes("Invalid recipient") ? "Recipient server rejected email. This is due to IP reputation or spam filters. For better deliverability, use a professional SMTP relay like SendGrid, Mailgun, or Amazon SES." : errMsg.includes("timeout") ? "Connection timed out. Server may be blocking connections." : "Check recipient email and try again."; res.status(500).json({ error: "Failed to send: " + errMsg, suggestion: suggestion, tokens_consumed: 5 });
+        res.status(500).json({ error: "Failed to send: " + err.message });
       }
     }
   );
